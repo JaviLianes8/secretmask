@@ -86,7 +86,9 @@ PII detection, which is a different and much heavier job.
 that both redacts a useful set of secret patterns in free text and recursively
 masks the values of sensitive keys in nested data, so you can clean a payload in
 one call before it is logged. It is a plain function, not a framework: no logging
-handler to install, nothing to configure before it works.
+handler to install, nothing to configure before it works, and no dependencies to
+pull in. When you do want control, `MaskConfig` lets you add patterns and key
+names or swap the placeholder without giving up the built-ins.
 
 ## License
 
