@@ -43,9 +43,9 @@ logging.info("request %s", mask(payload))
 #  'headers': {'Authorization': '***'}, 'note': 'ping me at ***'}
 ```
 
-Configure the placeholder, add your own patterns or key names, or opt out of the
-built-ins. Build a `SecretMask` once and reuse it so the patterns compile a
-single time:
+Configure the placeholder, add your own patterns or key names, keep an allowlist,
+or opt out of the built-ins. Build a `SecretMask` once and reuse it so the
+patterns compile a single time:
 
 ```python
 from secretmask import MaskConfig, SecretMask
@@ -54,6 +54,7 @@ config = MaskConfig(
     placeholder="[hidden]",
     extra_keys=("iban",),
     extra_patterns=(("ticket", r"TCK-\d{4}"),),
+    allowlist=("support@lianes8studio.com",),  # never mask this one value
     label=True,  # show what was hidden: <redacted:email>
 )
 masker = SecretMask(config)
@@ -61,10 +62,59 @@ masker.mask_text("ref TCK-1234 for a@b.io")
 # 'ref <redacted:ticket> for <redacted:email>'
 ```
 
+### Strategies
+
+Choose how a secret is rendered with `Strategy` (or the string form):
+
+```python
+from secretmask import MaskConfig, Strategy, mask_text
+
+mask_text("Bearer abc123def456ghi", config=MaskConfig(strategy=Strategy.PARTIAL, keep_last=4))
+# 'Bearer ***********6ghi'  (keep the tail so two tokens stay distinguishable)
+
+mask_text("mail a@b.io", config=MaskConfig(strategy="hash"))
+# 'mail <sha256:0f3306f4>'  (deterministic, correlatable, never readable)
+```
+
+- `full` replaces the secret with the placeholder (the default).
+- `label` names the detector, for example `<redacted:jwt>`.
+- `partial` keeps the last `keep_last` characters and masks the rest.
+- `hash` replaces the secret with a short deterministic SHA-256 digest.
+
+Masking is idempotent: masking an already-masked value changes nothing.
+
+### JSON
+
+```python
+from secretmask import mask_json
+
+mask_json('{"password": "p", "user": "ada", "note": "ping a@b.io"}')
+# '{"password": "***", "user": "ada", "note": "ping ***"}'
+```
+
+### Command line
+
+```
+$ secretmask "Authorization: Bearer abc123def456ghi"
+Authorization: Bearer ***
+
+$ echo '{"password": "p", "user": "ada"}' | secretmask --json
+{"password": "***", "user": "ada"}
+
+$ secretmask --file app.log --strategy partial --keep-last 2
+```
+
+Run `secretmask --help` for every option. See [GUIDE.md](GUIDE.md) for a full
+walk-through.
+
 ### What it detects out of the box
 
-- JWTs, `Bearer <token>` headers (the label is kept, the token goes)
+- JWTs and PEM private-key blocks
+- `Bearer <token>` headers (the label is kept, the token goes)
 - AWS access key ids, OpenAI, Stripe, GitHub, Slack and Google API keys
+- Passwords inside URLs (`scheme://user:pass@host`) and connection strings
+  (`Password=...;`), where only the password is hidden
+- Generic `key = value` / `key: value` secret assignments in log lines
 - Email addresses
 - Credit-card numbers, validated with the Luhn checksum so ordinary 16-digit
   references are left alone
