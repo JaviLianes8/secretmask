@@ -6,6 +6,28 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-11
+
+### Added
+
+- Masking strategies via the new `Strategy` enum and `strategy` on `MaskConfig`:
+  `full` (placeholder), `label`, `partial` (keep the last `keep_last` characters)
+  and `hash` (a short deterministic `<sha256:...>` digest of `hash_length` hex
+  characters). The older `label=True` flag still works.
+- More detectors: PEM private-key blocks, passwords inside URLs
+  (`scheme://user:pass@host`), connection-string passwords (`Password=...;`) and
+  generic `key = value` secret assignments in log lines.
+- `allowlist` on `MaskConfig`: exact strings that are never masked.
+- `mask_json`: mask a JSON document by structure and return masked JSON.
+- A `secretmask` command-line interface (also runnable as `python -m secretmask`)
+  with strategy, placeholder, pattern, key, allowlist, JSON and card options.
+- A dedicated `GUIDE.md`.
+
+### Changed
+
+- Card scanning is pinned to ASCII digits so non-Latin numerals are never
+  miscounted, and masking is guaranteed idempotent across every strategy.
+
 ## [0.1.0] - 2026-10-10
 
 ### Added
