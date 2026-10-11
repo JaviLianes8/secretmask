@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import pytest
 
@@ -27,7 +28,7 @@ def test_reads_from_stdin(
     assert "a@b.io" not in out
 
 
-def test_reads_from_a_file(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_reads_from_a_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     path = tmp_path / "log.txt"
     path.write_text("token=supersecretvalue1", encoding="utf-8")
     code = main(["--file", str(path)])

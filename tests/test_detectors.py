@@ -59,9 +59,25 @@ def test_adjacent_secrets_are_both_masked() -> None:
 
 
 def test_no_catastrophic_backtracking_on_pathological_input() -> None:
-    # A long run that teases the url, bearer and assignment rules. Linear regexes
+    # Long runs that tease the url, bearer and assignment rules. Bounded regexes
     # finish this in milliseconds; a backtracking one would hang.
     pathological = "Bearer " + "a" * 20000 + " " + "x=" + "y" * 20000 + " " + ":" * 20000
     start = time.perf_counter()
     mask_text(pathological)
+    assert time.perf_counter() - start < 2.0
+
+
+def test_email_regex_stays_linear_without_a_completing_at_sign() -> None:
+    # A long local-part-shaped run with no "@": a quadratic email rule would take
+    # seconds and grow fourfold per doubling. The bounded rule is near-instant.
+    start = time.perf_counter()
+    assert mask_text("a" * 200000) == "a" * 200000
+    assert time.perf_counter() - start < 1.0
+
+
+def test_jwt_regex_stays_linear_without_completing_dots() -> None:
+    # Repeated "eyJ" with no dots gives many start positions; a cap on each
+    # segment keeps the total linear instead of quadratic.
+    start = time.perf_counter()
+    mask_text("eyJ" * 60000)
     assert time.perf_counter() - start < 2.0

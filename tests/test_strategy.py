@@ -11,7 +11,7 @@ from secretmask import MaskConfig, SecretMask, Strategy, mask, mask_text
 
 def test_strategy_is_a_string_enum() -> None:
     assert Strategy("partial") is Strategy.PARTIAL
-    assert Strategy.HASH == "hash"
+    assert Strategy.HASH.value == "hash"
 
 
 def test_full_strategy_uses_the_placeholder() -> None:
