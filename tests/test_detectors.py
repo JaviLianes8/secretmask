@@ -81,6 +81,8 @@ def test_lookalikes_are_left_alone(text: str) -> None:
         ("password => abcdef", "password => ***"),
         ("PASSWORD=>'x y'", "PASSWORD=>'***'"),
         ("pwd => x", "pwd => ***"),
+        ("password='x'", "password=***"),
+        ("password=''", "password=***"),
         ("API-KEYS='k1,k2'", "API-KEYS='***'"),
         ("token=", "token="),
         ('token=""', 'token=""'),

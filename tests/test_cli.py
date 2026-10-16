@@ -96,9 +96,18 @@ def test_json_mode_by_subprocess_and_version() -> None:
 def test_usage_errors_exit_2() -> None:
     assert _run("--strategy", "nope", "x").returncode == 2
     assert _run("--keep-last", "many", "x").returncode == 2
-    for args in (["--pattern", "noequalsign", "x"], ["--file", "f.txt", "text"]):
+    bad = [["--pattern", p, "x"] for p in ("noequalsign", "n=", "=x")]
+    bad += [["--pattern", "a=b", "--pattern", "bad", "x"], ["--file", "f.txt", "text"]]
+    for args in bad:
         result = _run(*args)
-        assert result.returncode == 2 and b"usage: secretmask" in result.stderr
+        assert result.returncode == 2 and b"usage: secretmask" in result.stderr, args
+
+
+def test_a_pattern_regex_may_contain_and_end_with_equals(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main(["--pattern", "kv=k=[0-9]+", "--pattern", "b64=QQ==", "k=12 QQ=="]) == 0
+    assert capsys.readouterr().out == "*** ***\n"
 
 
 def test_a_closed_reader_is_not_an_error() -> None:

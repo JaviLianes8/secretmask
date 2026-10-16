@@ -66,6 +66,10 @@ TYPE_ERRORS: list[tuple[dict[str, Any], str]] = [
     ({"extra_patterns": "abc"}, "extra_patterns must be a tuple of (name, regex) pairs"),
     ({"extra_patterns": (("a", "b", "c"),)}, "extra_patterns must hold (name, regex) pairs"),
     ({"extra_patterns": (("a", 1),)}, "a (name, regex) pair must hold two strings"),
+    ({"extra_patterns": ["ab"]}, "extra_patterns must hold (name, regex) pairs"),
+    ({"extra_patterns": [{"a", "b"}]}, "extra_patterns must hold (name, regex) pairs"),
+    ({"extra_patterns": [{"a": 1, "b": 2}]}, "extra_patterns must hold (name, regex) pairs"),
+    ({"extra_patterns": [["t"]]}, "extra_patterns must hold (name, regex) pairs"),
 ]
 
 
