@@ -73,3 +73,19 @@ def test_card_masking_can_be_switched_off_and_allowlisted() -> None:
     assert mask_text(number, config=MaskConfig(mask_credit_cards=False)) == number
     assert mask_text(number, config=MaskConfig(allowlist=(number,))) == number
     assert mask_text(number, config=MaskConfig(strategy="label")) == "<redacted:credit_card>"
+
+
+def test_the_longest_card_from_the_first_group_is_taken() -> None:
+    number = "4242424242424242"
+    extra = next(f"{n:03d}" for n in range(1000) if luhn_ok(number + f"{n:03d}"))
+    spaced = " ".join(number[i : i + 4] for i in range(0, 16, 4))
+    # Both the 16 digits and the 19 digits pass Luhn: the longer reading wins.
+    assert mask_text(f"pan {spaced} {extra} end") == "pan *** end"
+
+
+def test_single_digit_groups_never_form_a_card() -> None:
+    number = card(random.Random(9), "4", 16)
+    spread = " ".join(number)
+    assert luhn_ok(number)
+    assert mask_text(spread) == spread
+    assert mask_text("-".join(number)) == "-".join(number)

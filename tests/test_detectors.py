@@ -53,6 +53,7 @@ def test_slack_webhook_keeps_the_host_and_hides_the_path() -> None:
         "ids 1 2 3 4 5 6 7 8 9 1 2 3 0",
         "2026-10-16 12:00:00,123",
         "café 你好 stays",
+        "eyJhbGciOiJIUzI1NiJ9.only-two-segments",  # a JWT has at least three
     ],
 )
 def test_lookalikes_are_left_alone(text: str) -> None:
@@ -68,6 +69,8 @@ def test_lookalikes_are_left_alone(text: str) -> None:
         ("Server=db;Password=p4ss;Database=app", "Server=db;Password=***;Database=app"),
         ("Server=db;Pwd = {a;b c};Db=x", "Server=db;Pwd = ***;Db=x"),
         ('Password="two words";x', "Password=***;x"),
+        ('Password="a;b";Db=x', "Password=***;Db=x"),
+        ("Pwd={a;b};Db=x", "Pwd=***;Db=x"),
         ("Authorization: Basic QWxhZGRpbjpvcGVu", "Authorization: Basic ***"),
         ("authorization='basic QWxhZGRp'", "authorization='basic ***'"),
         ("Authorization: Bearer abc123def456ghi", "Authorization: Bearer ***"),
