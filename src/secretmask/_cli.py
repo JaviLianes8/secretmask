@@ -8,6 +8,7 @@ unchanged. Errors go to standard error with exit status 1; usage errors exit 2.
 from __future__ import annotations
 
 import argparse
+import errno
 import os
 import sys
 from collections.abc import Sequence
@@ -104,9 +105,15 @@ def _write(text: str) -> None:
         sys.stdout.write(text)
         sys.stdout.flush()
         return
-    sys.stdout.flush()
-    raw.write(text.encode("utf-8", "surrogateescape"))
-    raw.flush()
+    try:
+        sys.stdout.flush()
+        raw.write(text.encode("utf-8", "surrogateescape"))
+        raw.flush()
+    except OSError as error:
+        # Windows reports a pipe closed by the reader as EINVAL, not as EPIPE.
+        if error.errno in (errno.EPIPE, errno.EINVAL):
+            raise BrokenPipeError(error.errno, "the reader closed the output") from None
+        raise
 
 
 def _run(args: argparse.Namespace) -> None:

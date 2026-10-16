@@ -5,11 +5,12 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator
 
-# A run of ASCII digit groups joined by single spaces or hyphens, each group at least
-# three digits long as on every card layout (4-4-4-4, 4-6-5, 4-4-4-4-3), so lists of
-# small numbers never add up to a card. Only ASCII digits count, so other scripts'
-# numerals are never read as one. The run is maximal and the scan linear.
-_RUN = re.compile(r"(?<![0-9])[0-9]{3,}(?:[ -][0-9]{3,})*")
+# A run of ASCII digit groups joined by single spaces or hyphens. Every group but the
+# last has at least three digits, as on card layouts (4-4-4-4, 4-6-5, 4-4-4-4-3, and
+# 4-4-4-2 for a 14-digit number), so lists of small numbers never add up to a card.
+# Only ASCII digits count, so other scripts' numerals are never read as one. The run
+# is maximal and the scan linear.
+_RUN = re.compile(r"(?<![0-9])[0-9]{3,}(?:[ -][0-9]{3,})*(?:[ -][0-9]{1,2}(?![0-9]))?")
 _DOUBLE = str.maketrans("0123456789", "0246813579")
 _GROUP = re.compile(r"[0-9]+")
 _MIN_DIGITS = 13

@@ -16,8 +16,11 @@ _BUILTIN = tuple((name, re.compile(regex)) for name, regex in BUILTIN_PATTERNS)
 
 
 def _preview(value: object) -> str:
+    # Errors show short values only: a long one may be a secret pasted by mistake.
+    if isinstance(value, int) and value.bit_length() > 64:
+        return f"an integer of {value.bit_length()} bits"
     text = repr(value)
-    return text if len(text) <= 40 else text[:37] + "..."
+    return text if len(text) <= 24 else f"a value of {len(text)} characters"
 
 
 def _strings(field_name: str, value: Any) -> tuple[str, ...]:

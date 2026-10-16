@@ -1,82 +1,116 @@
-"""In-process tests of the CLI entry point."""
+"""The command-line interface, in process and as a real subprocess."""
 
 from __future__ import annotations
 
 import io
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+from secretmask import __version__
 from secretmask._cli import main
+
+SRC = str(Path(__file__).resolve().parent.parent / "src")
+
+
+def _run(*args: str, stdin: bytes = b"") -> subprocess.CompletedProcess[bytes]:
+    env = {**os.environ, "PYTHONPATH": SRC}
+    return subprocess.run(
+        [sys.executable, "-m", "secretmask", *args],
+        input=stdin,
+        capture_output=True,
+        timeout=60,
+        env=env,
+        check=False,
+    )
 
 
 def test_masks_a_positional_argument(capsys: pytest.CaptureFixture[str]) -> None:
-    code = main(["Authorization: Bearer abc123def456ghi"])
-    out = capsys.readouterr().out
-    assert code == 0
-    assert "abc123def456ghi" not in out
-    assert "Bearer" in out
+    assert main(["Authorization: Bearer abc123def456ghi"]) == 0
+    assert capsys.readouterr().out == "Authorization: Bearer ***\n"
 
 
-def test_reads_from_stdin(
+def test_reads_a_text_stdin(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("sys.stdin", io.StringIO("mail a@b.io"))
-    code = main([])
-    out = capsys.readouterr().out
-    assert code == 0
-    assert "a@b.io" not in out
+    monkeypatch.setattr("sys.stdin", io.StringIO("mail a@b.io\n"))
+    assert main([]) == 0
+    assert capsys.readouterr().out == "mail ***\n"
 
 
-def test_reads_from_a_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    path = tmp_path / "log.txt"
-    path.write_text("token=supersecretvalue1", encoding="utf-8")
-    code = main(["--file", str(path)])
-    out = capsys.readouterr().out
-    assert code == 0
-    assert "supersecretvalue1" not in out
+def test_options_reach_the_config(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["--strategy", "partial", "--keep-last", "2", "Bearer abcdefghij"]) == 0
+    assert capsys.readouterr().out == "Bearer ********ij\n"
+    assert main(["--strategy", "hash", "--hash-length", "4", "a@b.io"]) == 0
+    assert capsys.readouterr().out.startswith("<sha256:") is True
+    assert main(["--placeholder", "#", "--key", "iban", "--json", '{"iban": 1}']) == 0
+    assert capsys.readouterr().out == '{"iban": "#"}\n'
+    assert main(["--no-cards", "4242 4242 4242 4242"]) == 0
+    assert capsys.readouterr().out == "4242 4242 4242 4242\n"
+    args = ["--pattern", "ticket=TCK-[0-9]{4}", "--allow", "a@b.io", "ref TCK-1234 a@b.io"]
+    assert main(args) == 0
+    assert capsys.readouterr().out == "ref *** a@b.io\n"
 
 
-def test_partial_strategy_option(capsys: pytest.CaptureFixture[str]) -> None:
-    code = main(["--strategy", "partial", "--keep-last", "2", "Bearer abcdefghij"])
-    out = capsys.readouterr().out
-    assert code == 0
-    assert out.strip() == "Bearer ********ij"
-
-
-def test_json_option_masks_by_structure(capsys: pytest.CaptureFixture[str]) -> None:
-    code = main(["--json", '{"password": "p", "user": "ada"}'])
-    out = capsys.readouterr().out
-    assert code == 0
-    assert '"user": "ada"' in out
-    assert '"p"' not in out
-
-
-def test_custom_pattern_and_allowlist(capsys: pytest.CaptureFixture[str]) -> None:
-    code = main(["--pattern", r"ticket=TCK-\d{4}", "--allow", "a@b.io", "ref TCK-1234 a@b.io"])
-    out = capsys.readouterr().out
-    assert code == 0
-    assert "TCK-1234" not in out
-    assert "a@b.io" in out
-
-
-def test_bad_pattern_errors_to_stderr(capsys: pytest.CaptureFixture[str]) -> None:
-    code = main(["--pattern", "noequalsign", "text"])
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (["--pattern", "noequalsign", "x"], "--pattern expects NAME=REGEX"),
+        (["--pattern", "t=(", "x"], "pattern 't' is not a valid regex"),
+        (["--keep-last", "-1", "x"], "keep_last must be at least 0"),
+        (["--json", "{not json"], "Expecting property name"),
+        (["--file", "does-not-exist-xyz.txt"], "No such file"),
+        (["--file", "f.txt", "text"], "give the text or --file, not both"),
+    ],
+)
+def test_errors_go_to_stderr_with_status_1(
+    args: list[str], message: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(args) == 1
     captured = capsys.readouterr()
-    assert code == 1
-    assert "secretmask:" in captured.err
     assert captured.out == ""
+    assert captured.err.startswith("secretmask: ") and message in captured.err
 
 
-def test_invalid_json_errors_to_stderr(capsys: pytest.CaptureFixture[str]) -> None:
-    code = main(["--json", "{not json"])
-    captured = capsys.readouterr()
-    assert code == 1
-    assert captured.err.startswith("secretmask:")
+def test_a_file_is_masked_byte_for_byte(tmp_path: Path) -> None:
+    path = tmp_path / "app.log"
+    path.write_bytes(b"caf\xc3\xa9 token=s3cr3t\r\nraw \xff\xfe a@b.io\n")
+    result = _run("--file", str(path))
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == b"caf\xc3\xa9 token=***\r\nraw \xff\xfe ***\n"
 
 
-def test_missing_file_errors_to_stderr(capsys: pytest.CaptureFixture[str]) -> None:
-    code = main(["--file", "does-not-exist-xyz.txt"])
-    captured = capsys.readouterr()
-    assert code == 1
-    assert "secretmask:" in captured.err
+def test_stdin_is_masked_without_adding_a_newline() -> None:
+    result = _run(stdin=b"line one a@b.io\nline two")
+    assert result.stdout == b"line one ***\nline two"
+    assert _run("--file", "-", stdin=b"pwd=x\n").stdout == b"pwd=***\n"
+
+
+def test_json_mode_by_subprocess_and_version() -> None:
+    result = _run("--json", stdin='{"password": "p", "user": "José"}\n'.encode())
+    assert result.stdout.decode("utf-8") == '{"password": "***", "user": "José"}\n'
+    assert _run("--version").stdout.decode().strip() == f"secretmask {__version__}"
+
+
+def test_usage_errors_exit_2() -> None:
+    assert _run("--strategy", "nope", "x").returncode == 2
+    assert _run("--keep-last", "many", "x").returncode == 2
+
+
+def test_a_closed_reader_is_not_an_error() -> None:
+    code = (
+        "import sys, subprocess\n"
+        "p = subprocess.Popen([sys.executable, '-m', 'secretmask'], stdin=subprocess.PIPE,"
+        " stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n"
+        "p.stdout.close()\n"
+        "_, err = p.communicate(b'a@b.io ' * 400000)\n"
+        "print(p.returncode, len(err))\n"
+    )
+    env = {**os.environ, "PYTHONPATH": SRC}
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, timeout=120, env=env
+    )
+    assert result.stdout.split()[:2] == ["0", "0"], result.stdout

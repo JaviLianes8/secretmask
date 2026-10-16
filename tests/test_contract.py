@@ -69,7 +69,7 @@ def test_config_fields_and_defaults_are_frozen() -> None:
 
 
 def test_config_is_frozen_hashable_comparable_and_pickles() -> None:
-    config = MaskConfig(extra_keys=["iban"], strategy="hash", hash_key="k")
+    config = MaskConfig(extra_keys=["iban"], strategy="hash", hash_key="k")  # type: ignore[arg-type]
     with pytest.raises(dataclasses.FrozenInstanceError):
         config.placeholder = "x"  # type: ignore[misc]
     assert config.extra_keys == ("iban",)
