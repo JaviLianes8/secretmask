@@ -99,7 +99,7 @@ def test_a_private_key_with_its_end_line_cut_off_is_still_hidden() -> None:
     text = "key: -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg\nMIIEvQIBADANBg"
     assert mask_text(text) == "key: ***"
     two = "-----BEGIN EC PRIVATE KEY-----\nAAAA\n-----BEGIN RSA PRIVATE KEY-----\nBBBB\n"
-    assert mask_text(two, config=LABEL) == "<redacted:private_key><redacted:private_key>"
+    assert mask_text(two, config=LABEL) == "<redacted:private_key>"  # touching: joined
 
 
 def test_cards_are_whole_groups_and_keep_what_follows() -> None:

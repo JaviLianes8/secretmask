@@ -10,6 +10,8 @@ from ._scan import mask_string
 from ._strategy import Strategy, render
 from ._walk import walk
 
+_MAX_PASSES = 16
+
 
 class SecretMask:
     """A reusable masker built from a :class:`MaskConfig`.
@@ -52,14 +54,23 @@ class SecretMask:
         if not isinstance(text, str):
             raise TypeError(f"mask_text expects a str, got {type(text).__name__}")
         config = self._config
-        return mask_string(
-            text,
-            config._patterns,
-            cards=config.mask_credit_cards,
-            allow=config._allow,
-            placeholder=config.placeholder,
-            render=self._render,
-        )
+        # A replacement can join what was around it into a new match (a quoted value
+        # whose line break went with a key block), so the scan repeats until it finds
+        # nothing new. Real text settles after one pass; noise built from detector
+        # fragments takes up to three.
+        for _ in range(_MAX_PASSES):
+            masked = mask_string(
+                text,
+                config._patterns,
+                cards=config.mask_credit_cards,
+                allow=config._allow,
+                placeholder=config.placeholder,
+                render=self._render,
+            )
+            if masked == text:
+                break
+            text = masked
+        return text
 
     def mask(self, value: Any) -> Any:
         """Redact a value recursively and return the masked copy.

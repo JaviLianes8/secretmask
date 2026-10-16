@@ -11,15 +11,17 @@ from ._strategy import masked_end
 CARD_NAME = "credit_card"
 
 # (start, end, detector name, keep): ``keep`` marks an allowlisted value or an earlier
-# redaction, which stays as it is but still blocks the detectors that come after it.
+# redaction, which stays as it is.
 _Span = tuple[int, int, str, bool]
 
 
 def _merge(taken: list[_Span], found: Iterable[_Span]) -> list[_Span]:
-    """Add the spans of one detector to ``taken``, dropping any that overlap it.
+    """Add the spans of one later detector to ``taken``.
 
-    Both inputs are sorted and free of overlaps, so one linear pass keeps the
-    result sorted and free of overlaps too.
+    A span that overlaps earlier ones is joined with them into one span, named after
+    the earlier detector, so a secret is replaced once as a whole and masking the
+    result again finds nothing new. Both inputs are sorted and free of overlaps, and
+    one linear pass keeps the result so.
     """
     merged: list[_Span] = []
     index = 0
@@ -27,11 +29,43 @@ def _merge(taken: list[_Span], found: Iterable[_Span]) -> list[_Span]:
         while index < len(taken) and taken[index][1] <= span[0]:
             merged.append(taken[index])
             index += 1
-        if index < len(taken) and taken[index][0] < span[1]:
-            continue
+        group: list[_Span] = []
+        if merged and merged[-1][1] > span[0]:
+            group.append(merged.pop())
+        end = span[1]
+        while index < len(taken) and taken[index][0] < end:
+            group.append(taken[index])
+            end = max(end, taken[index][1])
+            index += 1
+        if group:
+            start = min(group[0][0], span[0])
+            keep = span[3] and all(part[3] for part in group)
+            span = (start, max(end, group[-1][1]), group[0][2], keep)
         merged.append(span)
     merged.extend(taken[index:])
     return merged
+
+
+def _is_masked(text: str, start: int, end: int, placeholder: str) -> bool:
+    """Return True if ``text[start:end]`` lies within earlier redactions, back to back."""
+    position = start
+    while position < end:
+        position = masked_end(text, position, placeholder)
+        if position < 0:
+            return False
+    return True
+
+
+def _join_adjacent(spans: list[_Span]) -> list[_Span]:
+    # Two redactions that touch become one, so the output never shows two masks back
+    # to back that a later pass could read as one longer secret.
+    joined: list[_Span] = []
+    for span in spans:
+        if joined and joined[-1][1] == span[0]:
+            last = joined.pop()
+            span = (last[0], span[1], last[2], last[3] and span[3])
+        joined.append(span)
+    return joined
 
 
 def _pattern_spans(
@@ -44,8 +78,12 @@ def _pattern_spans(
             start, end = match.span()
         if start == end:
             continue
-        keep = text[start:end] in allow or masked_end(text, start, placeholder) >= end
-        yield start, end, name, keep
+        yield (
+            start,
+            end,
+            name,
+            text[start:end] in allow or _is_masked(text, start, end, placeholder),
+        )
 
 
 def mask_string(
@@ -68,6 +106,7 @@ def mask_string(
         taken = _merge(taken, found)
     if not taken:
         return text
+    taken = _join_adjacent(taken)
     pieces: list[str] = []
     cursor = 0
     for start, end, name, keep in taken:
