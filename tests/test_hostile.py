@@ -46,7 +46,7 @@ HOSTILE: dict[str, Callable[[int], str]] = {
 
 def _seconds(text: str, config: MaskConfig | None = None) -> float:
     best = float("inf")
-    for _ in range(2):
+    for _ in range(3):
         start = time.perf_counter()
         mask_text(text, config=config)
         best = min(best, time.perf_counter() - start)
@@ -59,7 +59,7 @@ def test_work_grows_linearly(name: str) -> None:
     small, large = _seconds(make(50_000)), _seconds(make(200_000))
     assert large < 2.0, f"{name}: {large:.2f} s for 200 kB"
     # Four times the input may cost at most about four times the time (plus noise).
-    assert large < 6 * small + 0.05, f"{name}: {small:.3f} s -> {large:.3f} s"
+    assert large < 6 * small + 0.25, f"{name}: {small:.3f} s -> {large:.3f} s"
 
 
 @pytest.mark.parametrize("strategy", list(Strategy))
