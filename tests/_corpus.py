@@ -133,3 +133,59 @@ def slack_webhook(rng: random.Random) -> tuple[str, str]:
     """Return a fake incoming-webhook URL and the part of it that is the secret."""
     path = "T" + _pick(rng, B32, 8) + "/B" + _pick(rng, B32, 8) + "/FAKE" + _pick(rng, ALNUM, 20)
     return "https://hooks.slack.com/services/" + path, path
+
+
+KEY_NAMES = [
+    "password",
+    "db_password",
+    "dbPassword",
+    "api_key",
+    "apiKey",
+    "secret",
+    "client_secret",
+    "AWS_SECRET_ACCESS_KEY",
+    "auth_token",
+    "private_key",
+    "PASSWORD",
+    "passwd",
+    "pwd",
+    "token",
+    "access_key",
+    "secret_key",
+    "secretKey",
+    "credentials",
+    "session_key",
+    "x-api-key",
+]
+KEY_FORMATS = [
+    "{k}={v}",
+    "{k}: {v}",
+    '"{k}": "{v}"',
+    '{k} = "{v}"',
+    "export {k}='{v}'",
+    "{k} := {v}",
+    "$config['{k}'] = '{v}';",
+    "{k} => '{v}'",
+    "{k}={v};other=1",
+    "{k}: '{v}'",
+    "{{{k}: {v}}}",
+]
+
+
+def token_lines(seed: int) -> list[str]:
+    """Log-like lines that carry each generated token in a different context."""
+    lines = []
+    for _, token in tokens(seed):
+        lines += [f"x {token} y", f'export K="{token}"', f"curl -H 'X-Auth: {token}'"]
+    return lines
+
+
+def keyword_lines(seed: int) -> list[str]:
+    """``key = value`` lines: every key name in every syntax, with fake values."""
+    rng = random.Random(seed)
+    lines = []
+    for key in KEY_NAMES:
+        for form in KEY_FORMATS:
+            value = "Fk" + _pick(rng, ALNUM, 14)
+            lines.append(form.format(k=key, v=value))
+    return lines

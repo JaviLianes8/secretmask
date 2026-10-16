@@ -74,16 +74,19 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
         r"(?P<s>[A-Za-z0-9+/]{4,8192}={0,2})",
     ),
     ("bearer", r"(?i)\bbearer[ \t]{1,8}(?P<s>[A-Za-z0-9._~+/=-]{8,8192})"),
-    # "key = value" in logs, configs, env files and JSON-ish text, where the key name
-    # contains a secret word ("password", "AWS_SECRET_ACCESS_KEY", "client_secret").
+    # "key = value" in logs, configs, env files, code and JSON-ish text, where the key
+    # name holds a secret word ("dbPassword", "AWS_SECRET_ACCESS_KEY", "client_secret").
+    # After the word only a separator or a capital may continue the name, so
+    # "tokenizer" and "passwordless" are not keys. Quoted values may hold spaces.
     (
         "assignment",
-        r"(?i)(?<![A-Za-z0-9])(?:[A-Za-z0-9]{1,32}[_.-]){0,4}"
-        r"(?:passwords?|passwd|passphrase|pwd|secrets?|api[_-]?keys?|access[_-]?keys?"
-        r"|private[_-]?keys?|access[_-]?tokens?|auth[_-]?tokens?|refresh[_-]?tokens?"
-        r"|tokens?|credentials?)"
-        r"(?:[_.-][A-Za-z0-9]{1,32}){0,3}[\"']?[ \t]{0,8}[:=][ \t]{0,8}[\"']?"
-        r"(?P<s>(?<=[\"'])[^\"'\n]{1,4096}(?=[\"'])|[^\s,;'\"`)\]}]{1,4096})",
+        r"(?i)(?<![A-Za-z0-9_.-])[A-Za-z0-9_.-]{0,128}?"
+        r"(?:passwords?|passwd|passphrase|pwd|secrets?|tokens?|credentials?"
+        r"|(?:api|access|auth|private|secret|session|signing|encryption|master)[_-]?keys?"
+        r"|(?:access|auth|refresh)[_-]?tokens?)"
+        r"(?:(?:[_.-]|(?-i:[A-Z]))[A-Za-z0-9_.-]{0,32})?"
+        r"[\"']?\]?[ \t]{0,8}(?:=>|:=|[:=])[ \t]{0,8}[\"']?"
+        r"(?P<s>(?<=[\"'])[^\"'\n]{1,4096}(?=[\"'])|[^\s,;&'\"`)\]}]{1,4096})",
     ),
     ("email", r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}"),
 )
@@ -101,6 +104,11 @@ BUILTIN_KEYS: tuple[str, ...] = (
     "apikey",
     "accesskey",
     "privatekey",
+    "secretkey",
+    "sessionkey",
+    "signingkey",
+    "encryptionkey",
+    "masterkey",
     "authorization",
     "auth",
     "credential",
