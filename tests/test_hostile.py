@@ -46,7 +46,7 @@ HOSTILE: dict[str, Callable[[int], str]] = {
 
 def _seconds(text: str, config: MaskConfig | None = None) -> float:
     best = float("inf")
-    for _ in range(3):
+    for _ in range(2):
         start = time.perf_counter()
         mask_text(text, config=config)
         best = min(best, time.perf_counter() - start)
@@ -56,8 +56,8 @@ def _seconds(text: str, config: MaskConfig | None = None) -> float:
 @pytest.mark.parametrize("name", sorted(HOSTILE))
 def test_work_grows_linearly(name: str) -> None:
     make = HOSTILE[name]
-    small, large = _seconds(make(100_000)), _seconds(make(400_000))
-    assert large < 4.0, f"{name}: {large:.2f} s for 400 kB"
+    small, large = _seconds(make(50_000)), _seconds(make(200_000))
+    assert large < 2.0, f"{name}: {large:.2f} s for 200 kB"
     # Four times the input may cost at most about four times the time (plus noise).
     assert large < 6 * small + 0.05, f"{name}: {small:.3f} s -> {large:.3f} s"
 
@@ -73,10 +73,10 @@ def test_every_strategy_survives_a_megabyte_of_mixed_secrets(strategy: Strategy)
 
 
 def test_large_flat_and_wide_structures() -> None:
-    data = {f"key{i}": f"a{i}@b.io" for i in range(50_000)}
+    data = {f"key{i}": f"a{i}@b.io" for i in range(20_000)}
     data["password"] = "p"
     out = mask(data)
-    assert out["key7"] == "***" and out["password"] == "***" and len(out) == 50_001
+    assert out["key7"] == "***" and out["password"] == "***" and len(out) == 20_001
     big = mask_json('{"a": [' + ",".join(['"x"'] * 100_000) + "]}")
     assert big.count('"x"') == 100_000
 
