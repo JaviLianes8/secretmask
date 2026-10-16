@@ -44,6 +44,45 @@ a contract):
 - CLI: an extra newline was appended to file and standard-input text, non-UTF-8 bytes
   failed the whole run, a closed pipe gave a traceback.
 
+## Ground truth (item 7)
+
+Nothing here is the library's own output. Three kinds of truth:
+
+- **Each vendor's own documentation and the RFCs, fetched live.**
+  `scripts/fetch_sources.py` (2026-10-16) fetches the AWS IAM identifiers page, GitHub's
+  token formats, Stripe's API keys, testing and webhook pages, Slack's token types,
+  Google Cloud's API keys page and RFC 3986, 4880, 6750, 7468, 7519 and 7617;
+  `tests/sources/MANIFEST.json` records URL, date, size, SHA-256 and licence, and the
+  copies stay git-ignored. `tests/test_ground_truth.py` reads facts from the copies at
+  run time: the twelve AWS id prefixes and which four are credentials (the others, and
+  the page's `AIDA...`/`AROA...` examples, stay visible), GitHub's six token prefixes
+  and the 2026 stateless `ghs_APPID_JWT` note, Stripe's `sk_`/`rk_`/`pk_`/`sk_org_`/`whsec_`
+  prefixes (publishable keys stay), every Luhn-valid number in Stripe's testing page
+  (at least 30 test cards), Slack's documented prefixes and example tokens, Google's
+  example key, both complete JWTs of RFC 7519 (signed and unsecured), every
+  `BEGIN`/`END` block of RFC 7468 (private ones hidden, certificates and public keys
+  kept), the OpenPGP armor labels of RFC 4880, the Basic examples of RFC 7617 and the
+  Bearer examples of RFC 6750.
+- **Other scanners' rule sets.** gitleaks (`config/gitleaks.toml` at b58d3f1, MIT) and
+  trufflehog (seven detector files at 31d7303, AGPL-3.0) are fetched at pinned commits,
+  never committed, and compiled in `tests/test_reference_rules.py`: over a seeded
+  corpus of synthetic tokens and `key = value` lines, everything any of their rules
+  matches must be gone after masking (25 seeds), and every generated vendor token must
+  be recognised by at least one gitleaks rule, so the corpus uses real formats. The
+  test of the corpus first found `session_key=` missed (gitleaks generic rule): fixed.
+- **detect-secrets 1.5.0, run live.** `scripts/capture_oracles.py` ran its vendor and
+  keyword plugins over seeds 0 to 19 of the corpus (CPython 3.13.2): 2,262 findings,
+  stored as seed, line, plugin, span and SHA-256 only (no secret text) in
+  `tests/fixtures/detect_secrets.json`; the test regenerates each line, checks the hash
+  and that the finding is hidden. With detect-secrets installed, ten fresh seeds are
+  scanned live. Before the fix of `$config['key'] = 'v'` and `key => 'v'`, 720 of its
+  keyword findings leaked; after, none.
+
+All synthetic secrets are generated at run time from a seed and carry a marker no real
+credential has (AWS's own `EXAMPLE` suffix, `FAKE`, broken GitHub checksums, unsigned
+JWTs); no token appears literally in the repository. Stripe's published test card
+numbers are cited with their URL in `tests/test_cards.py`.
+
 ## Author mutation round (item 18)
 
 42 mutants over every module, each applied alone to a fresh clone at 09cf3e0,
