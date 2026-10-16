@@ -30,7 +30,9 @@ forms documented in the guide, follow semantic versioning from here on.
   `AWS_SECRET_ACCESS_KEY=`, `client_secret=`, `dbPassword:`, `"password": "..."` in
   JSON-like text, `$config['api_key'] = '...'`, `key => value` and `key := value`,
   quoted values with spaces, values of any length (0.2.0 needed four characters),
-  passwords in `redis://:pw@host` and passwords containing `@`.
+  passwords in `redis://:pw@host` and passwords containing `@`. `password => x`
+  is now hidden and `password=>x` keeps its `=>` (0.2.0 left the first in clear and
+  gave `password=***` for the second).
 - Fewer false hits: a token no longer starts inside a word (`risk-assessment-...`
   was read as an `sk-` key), only the AWS credential prefixes `AKIA`, `ASIA`, `ABIA`
   and `ACCA` are hidden (unique ids such as `AIDA...` stay), card digits must come
@@ -55,6 +57,8 @@ forms documented in the guide, follow semantic versioning from here on.
   raises `ValueError` instead of `RecursionError`. JSON nested too deeply for the
   parser raises `ValueError`.
 - A match of zero characters from a custom pattern is ignored.
+- Command line: a `--pattern` without `NAME=` and giving both text and `--file` are
+  usage errors (exit status 2).
 - Command line: text from a file or standard input is written back unchanged apart
   from the secrets (0.2.0 added a newline and failed on bytes that are not UTF-8),
   output is always UTF-8, an invalid `--pattern` regex is reported instead of a

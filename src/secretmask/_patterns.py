@@ -67,7 +67,7 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
     # ADO.NET and ODBC connection strings: quoted, braced or bare values.
     (
         "connection_string",
-        r"(?i)(?<![A-Za-z0-9])(?:password|pwd)[ \t]{0,8}=[ \t]{0,8}"
+        r"(?i)(?<![A-Za-z0-9])(?:password|pwd)[ \t]{0,8}=(?!>)[ \t]{0,8}"
         r"(?P<s>\"[^\"\n]{0,1024}\"|'[^'\n]{0,1024}'|\{[^}\n]{0,1024}\}|[^;\s]+)",
     ),
     # HTTP authentication headers: Basic (RFC 7617) and Bearer (RFC 6750) credentials.

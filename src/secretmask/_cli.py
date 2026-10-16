@@ -52,7 +52,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     for flag, meta, text in (
         ("--pattern", "NAME=REGEX", "add a detector (repeatable)"),
-        ("--key", "NAME", "add a sensitive key name (repeatable)"),
+        ("--key", "NAME", "add a sensitive key name, for --json (repeatable)"),
         ("--allow", "VALUE", "never mask this exact value (repeatable)"),
     ):
         parser.add_argument(flag, action="append", default=[], metavar=meta, help=text)
@@ -63,11 +63,18 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _parse_pattern(spec: str) -> tuple[str, str]:
-    name, sep, regex = spec.partition("=")
-    if not sep or not name or not regex:
-        shown = spec if len(spec) <= 40 else spec[:37] + "..."
-        raise ValueError(f"--pattern expects NAME=REGEX, got {shown!r}")
+    name, _, regex = spec.partition("=")
     return name, regex
+
+
+def _check_usage(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    # parser.error() prints the usage and exits with status 2, like argparse's own checks.
+    if args.text is not None and args.file is not None:
+        parser.error("give the text or --file, not both")
+    for spec in args.pattern:
+        name, sep, regex = spec.partition("=")
+        if not (name and sep and regex):
+            parser.error("--pattern expects NAME=REGEX")
 
 
 def _decode(data: bytes) -> str:
@@ -77,8 +84,6 @@ def _decode(data: bytes) -> str:
 def _read_input(args: argparse.Namespace) -> tuple[str, bool]:
     """Return the input text and whether a newline must be added on output."""
     if args.text is not None:
-        if args.file is not None:
-            raise ValueError("give the text or --file, not both")
         return str(args.text), True
     if args.file is not None and args.file != "-":
         with open(args.file, "rb") as handle:
@@ -137,7 +142,9 @@ def _run(args: argparse.Namespace) -> None:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Entry point for the ``secretmask`` console script; returns the exit status."""
-    args = _build_parser().parse_args(argv)
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    _check_usage(parser, args)
     try:
         _run(args)
     except BrokenPipeError:

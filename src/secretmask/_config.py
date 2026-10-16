@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -38,7 +38,7 @@ def _compile(pairs: Any) -> tuple[tuple[str, re.Pattern[str]], ...]:
         raise TypeError("extra_patterns must be a tuple of (name, regex) pairs")
     compiled = []
     for pair in pairs:
-        if not (isinstance(pair, tuple) and len(pair) == 2):
+        if isinstance(pair, (str, bytes)) or not isinstance(pair, Sequence) or len(pair) != 2:
             raise TypeError("extra_patterns must hold (name, regex) pairs")
         name, regex = pair
         if not (isinstance(name, str) and isinstance(regex, str)):

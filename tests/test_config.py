@@ -35,6 +35,12 @@ def test_an_extra_pattern_that_matches_empty_text_changes_nothing() -> None:
     assert mask_text("abc", config=config) == "abc"
 
 
+def test_pairs_may_be_lists_as_read_from_json_or_yaml() -> None:
+    config = MaskConfig(extra_patterns=[["t", "T-[0-9]+"]])  # type: ignore[list-item]
+    assert config.extra_patterns == (("t", "T-[0-9]+"),)
+    assert mask_text("ref T-12", config=config) == "ref ***"
+
+
 def test_lists_are_accepted_and_stored_as_tuples() -> None:
     config = MaskConfig(
         extra_patterns=[("t", "T-1")],  # type: ignore[arg-type]

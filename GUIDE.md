@@ -117,13 +117,13 @@ patterns that match the placeholder can break this.
 
 In a mapping, the value of a sensitive key is replaced whole, whatever its type, and is
 not walked. A key is split into words (`accessToken`, `ACCESS_TOKEN`, `access-token`
-all give `access token`) and is sensitive when a run of whole words spells one of the
-names, optionally in the plural. Built in: `password`, `passwd`, `passphrase`, `pwd`,
+all give `access token`) and is sensitive when one of the names, joined across words
+if needed, ends a word, optionally followed by a plural `s`: `db_password`,
+`mypassword`, `oauth` (ends in `auth`) and `apiKeys` match. Built in: `password`, `passwd`, `passphrase`, `pwd`,
 `secret`, `token`, `apikey`, `accesskey`, `privatekey`, `secretkey`, `sessionkey`,
 `signingkey`, `encryptionkey`, `masterkey`, `authorization`, `auth`, `credential`,
-`sessionid`, `cookie`, `creditcard`, `cardnumber`, `cvv`, `ssn`. So `db_password`,
-`X-Api-Key`, `API_KEYS` and `cvv2` match; `author`, `tokenizer` and `passwordless` do
-not. Keys that are not strings are never sensitive.
+`sessionid`, `cookie`, `creditcard`, `cardnumber`, `cvv`, `ssn`. So `X-Api-Key`,
+`API_KEYS` and `cvv2` match; `author`, `tokenizer` and `passwordless` do not. Keys that are not strings are never sensitive.
 
 ```python
 from secretmask import MaskConfig, mask
@@ -155,7 +155,9 @@ print(mask_text("from noreply@example.com to a@b.io, TCK-1234, PIN 0042", config
 - `extra_patterns`: `(name, regex)` pairs tried after the built-ins. A named group `s`
   hides only that part. Names are 1 to 64 of `A-Z a-z 0-9 _ . -`. A match of zero
   characters is ignored.
-- `extra_keys`: more sensitive key names, with the same word rule.
+- `extra_keys`: more sensitive key names, with the same word rule. Key names apply to
+  mappings (and so to `mask_json` and `--json`); free text is read by the detectors
+  only, so add an `extra_patterns` entry for `iban=...` in plain text.
 - `use_builtin_patterns=False`, `use_builtin_keys=False`, `mask_credit_cards=False`
   switch the built-ins off.
 
@@ -170,8 +172,11 @@ state that changes its results, so threads can share it.
 | `TypeError` | a config field of the wrong type (a `str` where a tuple of strings is expected, a `bool` for `keep_last`), `SecretMask` given something that is not a `MaskConfig`, `mask_text` or `mask_json` given something that is not a `str` |
 | `ValueError` | `keep_last` below 0, `hash_length` outside 1 to 64, an unknown strategy, a bad pattern name, an invalid regex, invalid JSON, JSON nested deeper than the parser allows, a structure that contains itself |
 
-Messages never repeat a long value: a value longer than 24 characters is described by
-its length only, so a secret pasted into the wrong field does not end up in a log.
+The library's own messages never repeat a long value: a value longer than 24
+characters is described by its length only, so a secret pasted into the wrong field
+does not end up in a log. Invalid JSON raises `json.JSONDecodeError` (a `ValueError`),
+whose message gives only the position but whose `doc` attribute holds the document.
+On the command line, argparse quotes an invalid `--strategy` choice or number as given.
 
 ## Command line
 
@@ -183,7 +188,8 @@ secretmask "Authorization: Bearer abc123def456ghi"
 secretmask --file app.log --strategy partial --keep-last 2 > app.masked.log
 cat app.log | secretmask --strategy hash --hash-length 12
 secretmask --json '{"password": "p", "user": "ada"}'
-secretmask --pattern "ticket=TCK-[0-9]{4}" --key iban --allow a@b.io "TCK-1234 a@b.io"
+secretmask --pattern "ticket=TCK-[0-9]{4}" --allow a@b.io "TCK-1234 a@b.io"
+secretmask --json --key iban '{"iban": "ES00", "user": "ada"}'
 ```
 
 Options: `--strategy`, `--placeholder`, `--keep-last`, `--hash-length`, `--pattern
@@ -192,11 +198,13 @@ NAME=REGEX`, `--key NAME`, `--allow VALUE` (the last three repeatable), `--json`
 
 - Text from a file or standard input is written back byte for byte except for the
   secrets: line endings stay, nothing is added, and bytes that are not valid UTF-8
-  pass through unchanged. A positional argument gets a newline; `--json` output is one
-  line of compact JSON and a newline.
+  pass through unchanged. A positional argument gets a newline; `--json` output is the
+  JSON on one line and a newline.
 - Exit status: 0 on success (also when the reader closes the pipe early), 1 for an
-  error (message on standard error, starting with `secretmask:`), 2 for bad usage,
-  130 on Ctrl+C.
+  error (message on standard error, starting with `secretmask:`; a bad value such as
+  `--keep-last -1`, an invalid regex, a missing file, invalid JSON), 2 for bad usage
+  (an unknown option or choice, a `--pattern` without `NAME=`, text and `--file`
+  together), 130 on Ctrl+C.
 - The whole input is read before it is masked, so a key block split across lines is
   still found.
 

@@ -58,12 +58,10 @@ def test_options_reach_the_config(capsys: pytest.CaptureFixture[str]) -> None:
 @pytest.mark.parametrize(
     ("args", "message"),
     [
-        (["--pattern", "noequalsign", "x"], "--pattern expects NAME=REGEX"),
         (["--pattern", "t=(", "x"], "pattern 't' is not a valid regex"),
         (["--keep-last", "-1", "x"], "keep_last must be at least 0"),
         (["--json", "{not json"], "Expecting property name"),
         (["--file", "does-not-exist-xyz.txt"], "No such file"),
-        (["--file", "f.txt", "text"], "give the text or --file, not both"),
     ],
 )
 def test_errors_go_to_stderr_with_status_1(
@@ -98,6 +96,9 @@ def test_json_mode_by_subprocess_and_version() -> None:
 def test_usage_errors_exit_2() -> None:
     assert _run("--strategy", "nope", "x").returncode == 2
     assert _run("--keep-last", "many", "x").returncode == 2
+    for args in (["--pattern", "noequalsign", "x"], ["--file", "f.txt", "text"]):
+        result = _run(*args)
+        assert result.returncode == 2 and b"usage: secretmask" in result.stderr
 
 
 def test_a_closed_reader_is_not_an_error() -> None:
