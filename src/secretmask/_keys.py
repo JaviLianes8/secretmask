@@ -20,9 +20,9 @@ def normalize_key(key: str) -> str:
 class KeyMatcher:
     """Decide whether a mapping key names a secret.
 
-    A key is sensitive when a run of whole words in it spells one of the names,
-    optionally in the plural: "db_password", "accessToken" and "API_KEYS" match,
-    "author", "tokenizer" and "passwordless" do not.
+    A key is sensitive when one of the names ends a word of it, optionally in the
+    plural: "db_password", "accessToken", "accesstoken", "oauth" and "API_KEYS"
+    match, "author", "tokenizer" and "passwordless" do not.
     """
 
     def __init__(self, names: frozenset[str]) -> None:
@@ -54,9 +54,7 @@ class KeyMatcher:
             start = joined.find(name)
             while start != -1:
                 end = start + len(name)
-                if start in bounds and (
-                    end in bounds or (joined[end : end + 1] == "s" and end + 1 in bounds)
-                ):
+                if end in bounds or (joined[end : end + 1] == "s" and end + 1 in bounds):
                     return True
                 start = joined.find(name, start + 1)
         return False

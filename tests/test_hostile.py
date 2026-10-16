@@ -95,3 +95,34 @@ def test_odd_strings_never_crash() -> None:
         assert isinstance(out, str)
         assert mask_text(out) == out
     assert mask_text(odd[0]) == lone_surrogate + " password=***"
+
+
+@pytest.mark.parametrize("name", sorted(HOSTILE))
+def test_hostile_input_settles(name: str) -> None:
+    out = mask_text(HOSTILE[name](50_000))
+    assert mask_text(out) == out
+
+
+@pytest.mark.parametrize(
+    ("prefix", "body", "suffix"),
+    [
+        ("token=", "x", ""),
+        ("Bearer ", "a", " end"),
+        ("Authorization: Basic ", "Q", ""),
+        ("Password=", "p", ";Db=x"),
+        ("sk-", "a", ""),
+        ("ghp_", "a", ""),
+        ("github_pat_", "a", ""),
+        ("xoxb-", "1", ""),
+        ("sk_live_", "a", ""),
+        ("https://hooks.slack.com/services/", "T", ""),
+        ("eyJ", "a", ".eyJb.c"),
+        ("-----BEGIN PRIVATE KEY-----\n", "M", "\n-----END PRIVATE KEY-----"),
+    ],
+)
+def test_a_secret_of_any_length_is_hidden_whole(prefix: str, body: str, suffix: str) -> None:
+    text = f"x {prefix}{body * 200_000}{suffix} y"
+    out = mask_text(text)
+    assert body * 8 not in out
+    assert out.startswith("x ") and out.endswith(" y")
+    assert mask_text(out) == out

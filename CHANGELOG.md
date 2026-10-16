@@ -6,6 +6,62 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-16
+
+The public API is now stable: `mask`, `mask_text`, `mask_json`, `SecretMask`,
+`MaskConfig` and `Strategy`, with the signatures, defaults, detector names and output
+forms documented in the guide, follow semantic versioning from here on.
+
+### Added
+
+- Detectors for Basic credentials (`basic_auth`), Slack webhook URLs
+  (`slack_webhook`), Stripe webhook secrets and organization keys, Slack app-level,
+  configuration and workflow tokens, GitHub's stateless `ghs_<app id>_<JWT>` tokens,
+  OpenPGP private key blocks and unsecured or encrypted JWTs.
+- `MaskConfig.hash_key`: a key for HMAC-SHA256 digests under the `hash` strategy.
+- `SecretMask.config` and a `repr` for `SecretMask`.
+- Every public name has examples that run as doctests; the guide documents every
+  detector with the source of its format, the errors and the limits.
+- Command line: `--file -` reads standard input.
+
+### Changed (upgrading from 0.2.0)
+
+- Detection follows each vendor's documented format and finds more:
+  `AWS_SECRET_ACCESS_KEY=`, `client_secret=`, `dbPassword:`, `"password": "..."` in
+  JSON-like text, `$config['api_key'] = '...'`, `key => value` and `key := value`,
+  quoted values with spaces, values of any length (0.2.0 needed four characters),
+  passwords in `redis://:pw@host` and passwords containing `@`.
+- Fewer false hits: a token no longer starts inside a word (`risk-assessment-...`
+  was read as an `sk-` key), only the AWS credential prefixes `AKIA`, `ASIA`, `ABIA`
+  and `ACCA` are hidden (unique ids such as `AIDA...` stay), card digits must come
+  in groups of three or more (`4 1 1 1 ...` stays), and a bare value ends at `&`, so
+  the rest of a query string survives.
+- A card followed by more digits, such as an expiry date or a year, is now found
+  (0.2.0 counted the extra digits and missed the card).
+- A private key block whose `END` line is missing is hidden instead of skipped.
+- Sensitive keys must end a word: `author`, `authenticated`, `tokenizer` and
+  `passwordless` are no longer hidden; `max_tokens` (a plural of `token`) now is.
+- Overlapping matches become one redaction named after the earlier detector, and
+  touching redactions are joined; masked output is stable when masked again, also
+  with a custom placeholder such as `[hidden]` (0.2.0 turned it into `[hidden]]`).
+- `MaskConfig` checks its arguments when it is built: wrong types raise `TypeError`,
+  bad values `ValueError` (an invalid regex raised `re.error` in 0.2.0), a bare string
+  where a tuple of strings is expected is refused, lists are stored as tuples, and
+  pattern names are limited to 1 to 64 of `A-Z a-z 0-9 _ . -`. Error messages never
+  repeat a long value.
+- `mask_text` and `mask_json` raise `TypeError` for anything that is not a `str`, and
+  `SecretMask` for a config that is not a `MaskConfig`.
+- `mask` no longer recurses: any depth works, and a structure that contains itself
+  raises `ValueError` instead of `RecursionError`. JSON nested too deeply for the
+  parser raises `ValueError`.
+- A match of zero characters from a custom pattern is ignored.
+- Command line: text from a file or standard input is written back unchanged apart
+  from the secrets (0.2.0 added a newline and failed on bytes that are not UTF-8),
+  output is always UTF-8, an invalid `--pattern` regex is reported instead of a
+  traceback, a closed pipe exits 0, Ctrl+C exits 130, and giving both text and
+  `--file` is an error.
+- The public classes and functions report `secretmask` as their module.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added

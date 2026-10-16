@@ -12,6 +12,11 @@ from secretmask import MaskConfig, mask
     [
         "password",
         "PASSWORD",
+        "dbpassword",
+        "accesstoken",
+        "clientsecret",
+        "oauth",
+        "csrftoken",
         "db_password",
         "dbPassword",
         "user-passwords",

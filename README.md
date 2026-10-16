@@ -1,148 +1,101 @@
 # secretmask
 
-Typed, zero-dependency secret masker: redact API keys, tokens, emails and card
-numbers in strings and nested data before they reach your logs.
-
-## Install
+Typed, zero-dependency secret masker: redact API keys, tokens, passwords, emails and
+card numbers in strings, logs, JSON and nested data before they are stored.
 
 ```
 pip install secretmask
 ```
 
-## Usage
+Python 3.10 or later. No runtime dependencies. Full guide:
+[GUIDE.md](https://github.com/JaviLianes8/secretmask/blob/main/GUIDE.md) · changes:
+[CHANGELOG.md](https://github.com/JaviLianes8/secretmask/blob/main/CHANGELOG.md).
 
-Mask a single string:
+## The problem
 
-```python
-from secretmask import mask_text
+A log line, an error report or a debug dump is the easiest place for a credential to
+leak: `logging` writes whatever it is given, and a request payload or an exception
+message often carries an `Authorization` header, a database URL with its password, or
+a cloud key. `secretmask` cleans the text or the data before it leaves your process.
 
-mask_text("Authorization: Bearer abc123def456ghi")
-# 'Authorization: Bearer ***'
-
-mask_text("contact jane.doe@example.com, card 4111 1111 1111 1111")
-# 'contact ***, card ***'
-```
-
-Mask a whole structure before logging it. The value of any sensitive key is
-hidden wholesale, string values are pattern-redacted, and lists and nested
-mappings are walked for you. The input is never mutated:
+## Quick start
 
 ```python
-import logging
-from secretmask import mask
+from secretmask import mask, mask_text
 
-payload = {
-    "user": "ada",
-    "password": "hunter2",
-    "headers": {"Authorization": "Bearer eyJ..."},
-    "note": "ping me at ada@example.com",
-}
+print(mask_text("Authorization: Bearer abc123def456ghi"))
+# Authorization: Bearer ***
 
-logging.info("request %s", mask(payload))
-# {'user': 'ada', 'password': '***',
-#  'headers': {'Authorization': '***'}, 'note': 'ping me at ***'}
+print(mask_text("db=postgres://app:s3cr3t@db:5432/main card 4242 4242 4242 4242"))
+# db=postgres://app:***@db:5432/main card ***
+
+payload = {"user": "ada", "db_password": "hunter2", "note": "mail ada@example.com"}
+print(mask(payload))
+# {'user': 'ada', 'db_password': '***', 'note': 'mail ***'}
 ```
 
-Configure the placeholder, add your own patterns or key names, keep an allowlist,
-or opt out of the built-ins. Build a `SecretMask` once and reuse it so the
-patterns compile a single time:
+`mask` walks dicts, lists and tuples: the value of a sensitive key (`password`,
+`apiKey`, `X-Api-Key`, `client_secret`, ...) is hidden whole, every other string is
+scanned. The input is never changed.
+
+Choose how secrets are shown, add your own detectors, keep known values:
 
 ```python
 from secretmask import MaskConfig, SecretMask
 
-config = MaskConfig(
-    placeholder="[hidden]",
-    extra_keys=("iban",),
-    extra_patterns=(("ticket", r"TCK-\d{4}"),),
-    allowlist=("support@lianes8studio.com",),  # never mask this one value
-    label=True,  # show what was hidden: <redacted:email>
+masker = SecretMask(
+    MaskConfig(
+        strategy="label",  # or "full", "partial", "hash"
+        extra_patterns=(("ticket", r"TCK-\d{4}"),),
+        allowlist=("support@example.com",),
+    )
 )
-masker = SecretMask(config)
-masker.mask_text("ref TCK-1234 for a@b.io")
-# 'ref <redacted:ticket> for <redacted:email>'
+print(masker.mask_text("TCK-1234 from ada@example.com, cc support@example.com"))
+# <redacted:ticket> from <redacted:email>, cc support@example.com
 ```
 
-### Strategies
-
-Choose how a secret is rendered with `Strategy` (or the string form):
-
-```python
-from secretmask import MaskConfig, Strategy, mask_text
-
-mask_text("Bearer abc123def456ghi", config=MaskConfig(strategy=Strategy.PARTIAL, keep_last=4))
-# 'Bearer ***********6ghi'  (keep the tail so two tokens stay distinguishable)
-
-mask_text("mail a@b.io", config=MaskConfig(strategy="hash"))
-# 'mail <sha256:0f3306f4>'  (deterministic, correlatable, never readable)
-```
-
-- `full` replaces the secret with the placeholder (the default).
-- `label` names the detector, for example `<redacted:jwt>`.
-- `partial` keeps the last `keep_last` characters and masks the rest.
-- `hash` replaces the secret with a short deterministic SHA-256 digest.
-
-Masking is idempotent: masking an already-masked value changes nothing.
-
-### JSON
-
-```python
-from secretmask import mask_json
-
-mask_json('{"password": "p", "user": "ada", "note": "ping a@b.io"}')
-# '{"password": "***", "user": "ada", "note": "ping ***"}'
-```
-
-### Command line
+From the shell, on a file, standard input or JSON:
 
 ```
-$ secretmask "Authorization: Bearer abc123def456ghi"
-Authorization: Bearer ***
-
+$ secretmask "token=abc123"
+token=***
+$ secretmask --strategy hash < app.log > app.masked.log
 $ echo '{"password": "p", "user": "ada"}' | secretmask --json
 {"password": "***", "user": "ada"}
-
-$ secretmask --file app.log --strategy partial --keep-last 2
 ```
 
-Run `secretmask --help` for every option. See [GUIDE.md](GUIDE.md) for a full
-walk-through.
+## What it finds
 
-### What it detects out of the box
+Vendor formats as each vendor documents them: AWS access key ids (`AKIA`, `ASIA`,
+`ABIA`, `ACCA`), GitHub tokens (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`,
+`github_pat_`), Stripe secret, restricted and webhook keys, Slack tokens and webhook
+URLs, Google API keys, OpenAI-style `sk-` keys, JWTs, and PEM, OpenSSH and OpenPGP
+private keys. Generic shapes: passwords in URLs and connection strings, `Basic` and
+`Bearer` credentials, `key = value` assignments whose key names a secret, email
+addresses, and card numbers that pass the Luhn checksum. The
+[guide](https://github.com/JaviLianes8/secretmask/blob/main/GUIDE.md#detectors) lists
+every detector with its source.
 
-- JWTs and PEM private-key blocks
-- `Bearer <token>` headers (the label is kept, the token goes)
-- AWS access key ids, OpenAI, Stripe, GitHub, Slack and Google API keys
-- Passwords inside URLs (`scheme://user:pass@host`) and connection strings
-  (`Password=...;`), where only the password is hidden
-- Generic `key = value` / `key: value` secret assignments in log lines
-- Email addresses
-- Credit-card numbers, validated with the Luhn checksum so ordinary 16-digit
-  references are left alone
-- The values of sensitive keys (`password`, `token`, `secret`, `authorization`,
-  `api_key`, ...), matched case-insensitively and ignoring separators
+The detectors are checked against the vendors' own documentation and RFC examples,
+and against the rule sets of gitleaks, trufflehog and detect-secrets: whatever those
+tools call a secret in the test corpus is hidden.
 
-## Why
+## Why another one
 
-`logging` in the standard library will happily write a bearer token or a
-password straight to disk, and there is no built-in way to scrub it. The
-maintained options do not quite fill the gap: `misprint` is typed and
-dependency-free but only masks the exact strings or regexes you hand it, with no
-built-in patterns and no recursive key masking; `loggingredactor` is tied to the
-logging-filter machinery, matches keys case-sensitively, and ships no patterns
-for JWTs, cloud keys or card numbers; `scrubadub` pulls in NLP dependencies for
-PII detection, which is a different and much heavier job.
+- `scrubadub` finds personal data with natural-language tooling and depends on
+  `textblob`, `scikit-learn` and six other packages; it is not aimed at credentials.
+- `loggingredactor` and `misprint` are logging filters: they redact records as they
+  pass through `logging`, not a string or a payload you hold.
+- `detect-secrets`, `gitleaks` and `trufflehog` scan repositories and files and report
+  findings; they do not hand back a cleaned copy of a string.
 
-`secretmask` is the small piece in between: one typed, zero-dependency function
-that both redacts a useful set of secret patterns in free text and recursively
-masks the values of sensitive keys in nested data, so you can clean a payload in
-one call before it is logged. It is a plain function, not a framework: no logging
-handler to install, nothing to configure before it works, and no dependencies to
-pull in. When you do want control, `MaskConfig` lets you add patterns and key
-names or swap the placeholder without giving up the built-ins.
+`secretmask` is a plain function you can call anywhere (a log formatter, an error
+handler, an API response, a CLI pipe) that already knows the common credential formats,
+masks nested data by key, and depends on nothing.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/JaviLianes8/secretmask/blob/main/LICENSE).
 
 ## Links
 
