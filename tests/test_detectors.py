@@ -127,6 +127,7 @@ def test_lookalikes_are_left_alone(text: str) -> None:
         ("a" * 70 + "-bob@example.org", "***"),
         ("a" * 200 + "@example.org", "***"),
         ("a" * 300 + "@example.org", "***"),
+        ("a" * 5000 + "@example.org", "***"),
         ("{'password': 'hunter2', 'user': 'ada'}", "{'password': '***', 'user': 'ada'}"),
         ("https://u:pw@h.com;ada@example.org", "https://u:***@h.com;***"),
         ("https://u:pw@h.com|ada@example.org", "https://u:***@h.com|***"),
