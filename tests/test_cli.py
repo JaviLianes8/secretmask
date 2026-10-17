@@ -144,6 +144,6 @@ def test_error_messages_never_repeat_a_secret_or_a_long_value() -> None:
 
 
 def test_json_with_an_escaped_lone_surrogate_is_written_back_escaped() -> None:
-    result = _run("--json", stdin=b'{"a": "\ud800", "token": "t"}')
+    result = _run("--json", stdin=b'{"a": "\\ud800", "token": "t"}')
     assert result.returncode == 0, result.stderr
-    assert result.stdout == b'{"a": "\ud800", "token": "***"}\n'
+    assert result.stdout == b'{"a": "\\ud800", "token": "***"}\n'
