@@ -29,28 +29,44 @@ def find_cards(text: str) -> Iterator[tuple[int, int]]:
     """Yield the ``(start, end)`` span of every card number in ``text``.
 
     A card is whole digit groups (never part of a group) holding 13 to 19 digits
-    that pass Luhn. Within a run the longest card starting at the leftmost group is
-    taken, so "4111 1111 1111 1111 12/26" yields the card and keeps the date.
+    that pass Luhn, laid out as cards are, taking the longest reading from each group
+    and joining readings that overlap. "4111 1111 1111 1111 12/26" yields the card
+    and keeps the date, and "qty 197 4689 ..." keeps the quantity.
     """
     for run in _RUN.finditer(text):
         digits = run.group(0)
         groups = [(m.start(), m.end()) for m in _GROUP.finditer(digits)]
         base = run.start()
-        index = 0
-        while index < len(groups):
+        # Every group may start a card; overlapping readings ("1234 4421 8096 7929
+        # 0814" holds two) are joined, so an ambiguous run is hidden rather than half shown.
+        span: tuple[int, int] | None = None
+        for index in range(len(groups)):
             found = _longest_card(digits, groups, index)
             if found is None:
-                index += 1
                 continue
-            yield base + groups[index][0], base + groups[found][1]
-            index = found + 1
+            if span is not None and index <= span[1]:
+                span = (span[0], max(span[1], found))
+                continue
+            if span is not None:
+                yield base + groups[span[0]][0], base + groups[span[1]][1]
+            span = (index, found)
+        if span is not None:
+            yield base + groups[span[0]][0], base + groups[span[1]][1]
 
 
 def _longest_card(run: str, groups: list[tuple[int, int]], first: int) -> int | None:
+    # Grouped numbers follow card layouts: four digits first, then groups of four or
+    # six (4-4-4-4, 4-6-5, 4-6-4), and a last group of at most six; an unbroken run
+    # is read as one group. A number written before the card is then never taken in.
     digits = ""
     best = None
     for last in range(first, len(groups)):
         start, end = groups[last]
+        if last > first:
+            middle = groups[last - 1][1] - groups[last - 1][0]
+            head = groups[first][1] - groups[first][0]
+            if head != 4 or end - start > 6 or (last - 1 > first and middle not in (4, 6)):
+                break
         digits += run[start:end]
         if len(digits) > _MAX_DIGITS:
             break

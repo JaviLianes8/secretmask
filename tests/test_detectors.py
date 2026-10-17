@@ -54,6 +54,8 @@ def test_slack_webhook_keeps_the_host_and_hides_the_path() -> None:
         "2026-10-16 12:00:00,123",
         "café 你好 stays",
         "eyJhbGciOiJIUzI1NiJ9.only-two-segments",  # a JWT has at least three
+        "sk-" + "a" * 19,  # one short of the 20 an sk- key needs
+        "AIza" + "b" * 35 + "_prod",  # a longer word, not a key (as gitleaks reads it)
     ],
 )
 def test_lookalikes_are_left_alone(text: str) -> None:
@@ -79,6 +81,20 @@ def test_lookalikes_are_left_alone(text: str) -> None:
         ('{"password": "hunter 2", "user": "ada"}', '{"password": "***", "user": "ada"}'),
         ("db.password = x", "db.password = ***"),
         ("password => abcdef", "password => ***"),
+        ('{"client_secret": "it' + "'" + 's-Secret-99"}', '{"client_secret": "***"}'),
+        ("api_key = 'O" + '"' + "Brien-Secret-99'", "api_key = '***'"),
+        ('{"api_key": "ab' + "\\" + '"Secret-99"}', '{"api_key": "***"}'),
+        (
+            "postgres://admin:s3cr3t@db.example.com:5432/app",
+            "postgres://admin:***@db.example.com:5432/app",
+        ),
+        ("amqp://u:p@ss@mq.example.org/vh", "amqp://u:***@mq.example.org/vh"),
+        ("https://ada@example.org/x", "https://ada@example.org/x"),
+        ("mailto:ada@example.org", "mailto:***"),
+        ("Password=my Secret 99;Encrypt=True", "Password=***;Encrypt=True"),
+        ('Password="pa""rest";x', "Password=***;x"),
+        ("PWD={pa}}rest};x", "PWD=***;x"),
+        ("password=abc user=bob", "password=*** user=bob"),
         ("PASSWORD=>'x y'", "PASSWORD=>'***'"),
         ("pwd => x", "pwd => ***"),
         ("password='x'", "password=***"),
@@ -91,6 +107,25 @@ def test_lookalikes_are_left_alone(text: str) -> None:
 )
 def test_partial_detectors_hide_only_the_secret(text: str, expected: str) -> None:
     assert mask_text(text) == expected
+
+
+def test_tokens_after_a_hyphen_or_underscore_are_found() -> None:
+    for token in ("ghp_" + "a" * 36, "sk-" + "a" * 20, "sk_live_" + "a" * 16):
+        for left in ("x-", "x_", "-", "_"):
+            assert mask_text(left + token) == left + "***", left + token
+
+
+def test_more_documented_shapes() -> None:
+    jwe = ".".join(["eyJhbGciOiJSU0EifQ", "a" * 20, "b" * 16, "c" * 30, "d" * 22])
+    assert mask_text(f"[{jwe}]", config=LABEL) == "[<redacted:jwt>]"
+    assert mask_text("whsec_" + "Ab+/=" * 6, config=LABEL) == "<redacted:stripe_key>"
+    for prefix in ("xoxe-1-", "xoxr-", "xoxe.xoxp-1-", "xoxa-2-"):
+        assert mask_text(prefix + "FAKE" + "0" * 20, config=LABEL) == "<redacted:slack_token>"
+    for kind in ("workflows", "triggers"):
+        url = f"https://hooks.slack.com/{kind}/T0FAKE/A0FAKE/1234/abcdefghijklmnopqrst"
+        assert mask_text(url, config=LABEL).endswith("/<redacted:slack_webhook>")
+    pem = "-----BEGIN PRIVATE KEY-----\nMIIab----cdEF\n-----END PRIVATE KEY-----"
+    assert mask_text(pem) == "***"
 
 
 def test_a_known_shape_wins_over_the_generic_rules() -> None:
@@ -112,7 +147,7 @@ def test_a_private_key_with_its_end_line_cut_off_is_still_hidden() -> None:
 
 def test_cards_are_whole_groups_and_keep_what_follows() -> None:
     assert mask_text("4111 1111 1111 1111 12/26") == "*** 12/26"
-    assert mask_text("4111 1111 1111 1111 2024") == "*** 2024"
+    assert mask_text("4111 1111 1111 1111 2026") == "*** 2026"
     assert mask_text("12 4111-1111-1111-1111 9") == "12 *** 9"
     assert mask_text("amex 3782 822463 10005.") == "amex ***."
     assert mask_text("4111 1111 1111 1112") == "4111 1111 1111 1112"

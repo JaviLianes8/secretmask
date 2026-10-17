@@ -89,3 +89,24 @@ def test_single_digit_groups_never_form_a_card() -> None:
     assert luhn_ok(number)
     assert mask_text(spread) == spread
     assert mask_text("-".join(number)) == "-".join(number)
+
+
+def test_a_number_before_the_card_is_kept_and_the_card_hidden_whole() -> None:
+    rng = random.Random(11)
+    for _ in range(300):
+        number = card(rng, "4", 16)
+        spaced = " ".join(number[i : i + 4] for i in range(0, 16, 4))
+        for before in ("qty 197", "2026 589", "ref 12"):  # three digits are never a first group
+            assert mask_text(f"{before} {spaced} ok") == f"{before} *** ok", (before, spaced)
+        # A four-digit number just before the card may read as part of it: when two
+        # readings overlap both are hidden, so no digit of the card shows.
+        out = mask_text(f"id 1234 {spaced} ok")
+        assert out in ("id 1234 *** ok", "id *** ok"), out
+
+
+def test_grouped_numbers_must_follow_a_card_layout() -> None:
+    assert mask_text("3782 822463 10005") == "***"  # 4-6-5
+    assert mask_text("3056 930902 5904") == "***"  # 4-6-4
+    assert mask_text("3622 7206 2716 67") == "***"  # 4-4-4-2
+    assert mask_text("378 2822 4631 0005") == "378 2822 4631 0005"  # starts with three
+    assert mask_text("4242 42424 2424242") == "4242 42424 2424242"  # a five in the middle

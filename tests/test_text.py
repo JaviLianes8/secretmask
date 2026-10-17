@@ -72,3 +72,10 @@ def test_text_without_secrets_is_returned_unchanged() -> None:
 def test_surrounding_unicode_survives_and_lines_keep_their_endings() -> None:
     text = "café ✓ token=s3cr3t\r\nnext 你好 a@b.io\n"
     assert mask_text(text) == "café ✓ token=***\r\nnext 你好 ***\n"
+
+
+def test_an_allowlisted_match_never_uncovers_a_secret_it_overlaps() -> None:
+    config = MaskConfig(
+        extra_patterns=(("tail", r"abcdefgh1 tail"),), allowlist=("abcdefgh1 tail",)
+    )
+    assert mask_text("Bearer abcdefgh1 tail", config=config) == "Bearer ***"

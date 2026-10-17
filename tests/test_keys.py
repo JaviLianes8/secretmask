@@ -65,6 +65,8 @@ def test_secret_key_names_are_recognised(key: str) -> None:
         "keyboard",
         "",
         "pass",
+        "SSNumber",
+        "authority",
     ],
 )
 def test_lookalike_key_names_are_not(key: str) -> None:

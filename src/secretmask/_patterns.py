@@ -9,8 +9,11 @@ documentation; the facts and their sources are listed in GUIDE.md.
 from __future__ import annotations
 
 # A token may not start in the middle of a longer word, so "risk-..." never reads
-# as an "sk-" key and "disk_test_..." never as a Stripe key.
-_START = r"(?<![A-Za-z0-9_-])"
+# as an "sk-" key and "disk_test_..." never as a Stripe key; after "-" or "_" it may
+# ("x-ghp_..."). A JWT, whose first part is followed by a required ".", starts only
+# outside a base64url run, which keeps a run of "-eyJ-eyJ..." linear.
+_START = r"(?<![A-Za-z0-9])"
+_RUN_START = r"(?<![A-Za-z0-9_-])"
 _B64URL = r"[A-Za-z0-9_-]"
 
 # Detectors run in this order and, where two matches overlap, the earlier one wins,
@@ -31,13 +34,13 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
     # installation tokens, and fine-grained personal access tokens.
     (
         "github_token",
-        _START + r"gh[pousr]_(?:[0-9]{1,20}_" + _B64URL + r"{2,}(?:\.[A-Za-z0-9_-]*){2}"
-        r"|[A-Za-z0-9]{36,})",
+        _RUN_START + r"ghs_[0-9]{1,20}_" + _B64URL + r"{2,}(?:\.[A-Za-z0-9_-]*){2}",
     ),
+    ("github_token", _START + r"gh[pousr]_[A-Za-z0-9]{36,}"),
     ("github_pat", _START + r"github_pat_[A-Za-z0-9_]{22,}"),
     # JSON Web Tokens (RFC 7519): a base64url JSON header, so always "eyJ", then two to
     # four more dot-separated segments (JWS, unsecured JWT, JWE).
-    ("jwt", _START + r"eyJ" + _B64URL + r"{2,}(?:\.[A-Za-z0-9_-]*){2,4}"),
+    ("jwt", _RUN_START + r"eyJ" + _B64URL + r"{2,}(?:\.[A-Za-z0-9_-]*){2,4}"),
     # AWS access key ids: AKIA (long-term), ASIA (temporary), ABIA (STS service bearer
     # token), ACCA (context-specific credential). Other IAM unique ids are not secrets.
     ("aws_key", r"(?<![A-Za-z0-9])(?:AKIA|ASIA|ABIA|ACCA)[A-Z0-9]{16}(?![A-Za-z0-9])"),
@@ -68,7 +71,9 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
     (
         "connection_string",
         r"(?i)(?<![A-Za-z0-9])(?:password|pwd)[ \t]{0,8}=(?!>)[ \t]{0,8}"
-        r"(?P<s>\"[^\"\n]{0,1024}\"|'[^'\n]{0,1024}'|\{[^}\n]{0,1024}\}|[^;\s]+)",
+        r"(?P<s>\"(?:[^\"\n]|\"\"){0,1024}\"|'(?:[^'\n]|''){0,1024}'"
+        r"|\{(?:[^}\n]|\}\}){0,1024}\}"
+        r"|[^;\s\"'{][^;\s]{0,255}(?:[ \t]+[^;\s=]{1,256}){1,16}(?=[ \t]*;)|[^;\s]+)",
     ),
     # HTTP authentication headers: Basic (RFC 7617) and Bearer (RFC 6750) credentials.
     (
@@ -89,9 +94,16 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
         r"|(?:access|auth|refresh)[_-]?tokens?)"
         r"(?:(?:[_.-]|(?-i:[A-Z]))[A-Za-z0-9_.-]{0,32})?"
         r"[\"']?\]?[ \t]{0,8}(?:=>|:=|[:=])[ \t]{0,8}[\"']?"
-        r"(?P<s>(?<=[\"'])[^\"'\n]{1,4096}(?=[\"'])|[^\s,;&'\"`)\]}]+)",
+        r"(?P<s>(?<=\")(?:[^\"\\\n]|\\.){1,4096}(?=\")|(?<=')(?:[^'\\\n]|\\.){1,4096}(?=')"
+        r"|[^\s,;&'\"`)\]}]+)",
     ),
-    ("email", r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}"),
+    # An address starts a token and never inside a URL's authority ("://user:pw@host"
+    # and "://user@host" keep their host), except right after "mailto:".
+    (
+        "email",
+        r"(?:(?<=mailto:)|(?<![:/@A-Za-z0-9._%+-]))"
+        r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}",
+    ),
 )
 
 # Default key names whose values are secrets wherever they appear in a mapping. Key
