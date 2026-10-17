@@ -48,6 +48,9 @@ def walk(
     if not _is_container(value):
         return value
     active = {id(value)}
+    # A container met again (not inside itself) gets the copy already made, so data
+    # that shares objects costs its size, not the size of its unfolding.
+    done: dict[int, Any] = {}
     stack = [_Frame(value, None)]
     while True:
         frame = stack[-1]
@@ -56,6 +59,8 @@ def walk(
                 frame.out.append((key, hide(str(key), item)))
             elif isinstance(item, str):
                 frame.out.append((key, leaf(item)))
+            elif id(item) in done:
+                frame.out.append((key, done[id(item)]))
             elif _is_container(item):
                 if id(item) in active:
                     raise ValueError("cannot mask a structure that contains itself")
@@ -68,6 +73,7 @@ def walk(
             stack.pop()
             active.discard(id(frame.source))
             result = frame.build()
+            done[id(frame.source)] = result
             if not stack:
                 return result
             stack[-1].out.append((frame.key, result))

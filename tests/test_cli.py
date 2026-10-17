@@ -124,3 +124,26 @@ def test_a_closed_reader_is_not_an_error() -> None:
         [sys.executable, "-c", code], capture_output=True, text=True, timeout=120, env=env
     )
     assert result.stdout.split()[:2] == ["0", "0"], result.stdout
+
+
+def test_error_messages_never_repeat_a_secret_or_a_long_value() -> None:
+    token = "ghp_" + "Q" * 36
+    cases = [
+        ["--token=" + token],
+        ["-" + token],
+        ["--strategy", token, "x"],
+        ["--keep-last", token, "x"],
+        ["--file", "missing-" + "x" * 100],
+        ["--pattern", "n=(" + token, "x"],
+    ]
+    for args in cases:
+        result = _run(*args)
+        assert result.returncode in (1, 2), args
+        assert token.encode() not in result.stderr, args
+        assert b"x" * 50 not in result.stderr, args
+
+
+def test_json_with_an_escaped_lone_surrogate_is_written_back_escaped() -> None:
+    result = _run("--json", stdin=b'{"a": "\ud800", "token": "t"}')
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == b'{"a": "\ud800", "token": "***"}\n'

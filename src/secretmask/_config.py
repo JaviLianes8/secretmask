@@ -48,7 +48,9 @@ def _compile(pairs: Any) -> tuple[tuple[str, re.Pattern[str]], ...]:
         try:
             compiled.append((name, re.compile(regex)))
         except re.error as error:
-            raise ValueError(f"pattern {name!r} is not a valid regex: {error.msg}") from None
+            raise ValueError(
+                f"pattern {_preview(name)} is not a valid regex: {error.msg}"
+            ) from None
     return tuple(compiled)
 
 

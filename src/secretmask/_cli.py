@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from . import __version__
 from ._config import MaskConfig
 from ._mask import SecretMask
+from ._output import JSON_ERRORS, OUTPUT_ERRORS, Parser, safe
 from ._strategy import Strategy
 
 _EXAMPLES = """\
@@ -29,7 +30,7 @@ examples:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = Parser(
         prog="secretmask",
         description="Redact secrets in strings, logs and JSON before they are stored.",
         epilog=_EXAMPLES,
@@ -104,7 +105,7 @@ def _silence_stdout() -> None:
         pass
 
 
-def _write(text: str) -> None:
+def _write(text: str, errors: str = OUTPUT_ERRORS) -> None:
     raw = getattr(sys.stdout, "buffer", None)
     if raw is None:  # a replaced text stream, as in an embedding application
         sys.stdout.write(text)
@@ -112,7 +113,7 @@ def _write(text: str) -> None:
         return
     try:
         sys.stdout.flush()
-        raw.write(text.encode("utf-8", "surrogateescape"))
+        raw.write(text.encode("utf-8", errors))
         raw.flush()
     except OSError as error:
         # Windows reports a pipe closed by the reader as EINVAL, not as EPIPE.
@@ -135,7 +136,7 @@ def _run(args: argparse.Namespace) -> None:
     masker = SecretMask(config)
     text, add_newline = _read_input(args)
     if args.json:
-        _write(masker.mask_json(text) + "\n")
+        _write(masker.mask_json(text) + "\n", JSON_ERRORS)
     else:
         _write(masker.mask_text(text) + ("\n" if add_newline else ""))
 
@@ -154,7 +155,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except KeyboardInterrupt:
         return 130
     except (ValueError, TypeError, OSError) as error:
-        print(f"secretmask: {error}", file=sys.stderr)
+        print(f"secretmask: {safe(str(error))}", file=sys.stderr)
         return 1
     return 0
 
