@@ -100,7 +100,7 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
     ),
     # An address starts a token; one inside a URL's authority ("://user:p+w@host",
     # "://user@host") is not an address, see _scan.py.
-    (EMAIL, r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,256}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}"),
+    (EMAIL, r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}"),
 )
 
 # Default key names whose values are secrets wherever they appear in a mapping. Key

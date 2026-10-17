@@ -30,7 +30,9 @@ forms documented in the guide, follow semantic versioning from here on.
   `AWS_SECRET_ACCESS_KEY=`, `client_secret=`, `dbPassword:`, `"password": "..."` in
   JSON-like text, `$config['api_key'] = '...'`, `key => value` and `key := value`,
   quoted values with spaces, values of any length (0.2.0 needed four characters),
-  passwords in `redis://:pw@host` and passwords containing `@`. `password => x`
+  passwords in `redis://:pw@host` and passwords containing `@` (a part after an `@`
+  that holds `,` `;` `|` `(` `)` or `'` is not taken into the password, so a value
+  written right after a URL is read apart). `password => x`
   is now hidden and `password=>x` keeps its `=>` (0.2.0 left the first in clear and
   gave `password=***` for the second).
 - Fewer false hits: a token no longer starts inside a word (`risk-assessment-...`
