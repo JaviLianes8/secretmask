@@ -12,7 +12,8 @@ $version = (Select-String -Path src/secretmask/__init__.py -Pattern '__version__
 try {
     Invoke-WebRequest -UseBasicParsing "https://pypi.org/pypi/secretmask/$version/json" | Out-Null
     throw "secretmask $version is already on PyPI. Bump the version first."
-} catch [System.Net.WebException], [Microsoft.PowerShell.Commands.HttpResponseException] {
+} catch {
+    # Generic catch: works on Windows PowerShell 5.1 and pwsh 7 alike.
     if ($_.Exception.Response.StatusCode.value__ -ne 404) { throw }
 }
 
