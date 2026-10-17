@@ -4,18 +4,29 @@ build-backend = "hatchling.build"
 
 [project]
 name = "secretmask"
-version = "0.2.0"
-description = "Typed, zero-dependency secret masker: redact API keys, tokens, emails and card numbers in strings and nested data before logging"
+dynamic = ["version"]
+description = "Typed, zero-dependency secret masker: redact API keys, tokens, passwords, emails and card numbers in strings, logs, JSON and nested data"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Javier Lianes", email = "javier@lianes8studio.com" }]
-keywords = ["logging", "secrets", "redaction", "masking", "security", "pii", "sanitize"]
+keywords = ["logging", "secrets", "redaction", "masking", "security", "pii", "sanitize", "api-keys", "credentials", "scrub"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
     "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+    "Topic :: System :: Logging",
+    "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 dependencies = []
@@ -28,14 +39,20 @@ secretmask = "secretmask._cli:main"
 
 [project.urls]
 Homepage = "https://lianes8studio.com"
-Repository = "https://github.com/JaviLianes8/secretmask"
+Source = "https://github.com/JaviLianes8/secretmask"
 Issues = "https://github.com/JaviLianes8/secretmask/issues"
 Changelog = "https://github.com/JaviLianes8/secretmask/blob/main/CHANGELOG.md"
 LinkedIn = "https://www.linkedin.com/in/jlianes/"
 Funding = "https://buymeacoffee.com/jlianesglrs"
 
+[tool.hatch.version]
+path = "src/secretmask/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/secretmask"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["IMPROVEMENTS-round.md", "CERT-1.0-REPORT.md", "tests/sources/*.html", "tests/sources/*.txt", "tests/sources/*.md", "tests/sources/*.toml", "tests/sources/*.go", ".github"]
 
 [tool.ruff]
 line-length = 100
@@ -47,6 +64,10 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.10"
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["detect_secrets.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

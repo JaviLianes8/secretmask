@@ -1,152 +1,163 @@
-"""The masker: redact secrets in strings and recursively in nested data."""
+"""The masker: redact secrets in strings and, recursively, in nested data."""
 
 from __future__ import annotations
 
 import json
-import re
-from collections.abc import Callable, Mapping
 from typing import Any
 
-from ._config import MaskConfig, _normalize_key
-from ._patterns import _CARD_CANDIDATE, luhn_ok
+from ._config import MaskConfig
+from ._scan import mask_string
 from ._strategy import Strategy, render
+from ._walk import walk
 
-_CARD_RE = re.compile(_CARD_CANDIDATE)
+_MAX_PASSES = 16
 
 
 class SecretMask:
     """A reusable masker built from a :class:`MaskConfig`.
 
-    Build one and keep it: the patterns are compiled once. Every method returns a
-    redacted copy and never mutates its input, and masking is idempotent, so
-    masking an already-masked value changes nothing.
+    Build one and keep it: the detectors are compiled once, when the config is
+    built. Every method returns a masked copy and never changes its input, and
+    masking is idempotent for the built-in detectors: masking a masked value
+    changes nothing. A masker holds no mutable state that affects results, so
+    one instance can be shared between threads.
+
+    >>> from secretmask import MaskConfig, SecretMask
+    >>> masker = SecretMask(MaskConfig(strategy="label"))
+    >>> masker.mask_text("mail ada@example.com")
+    'mail <redacted:email>'
+    >>> masker.mask({"token": "t0ps3cret", "user": "ada"})
+    {'token': '<redacted:token>', 'user': 'ada'}
+    >>> masker.config.strategy
+    'label'
     """
 
     def __init__(self, config: MaskConfig | None = None) -> None:
-        self._config = config or MaskConfig()
+        if config is not None and not isinstance(config, MaskConfig):
+            raise TypeError(f"config must be a MaskConfig, got {type(config).__name__}")
+        self._config = config if config is not None else MaskConfig()
+
+    @property
+    def config(self) -> MaskConfig:
+        """The configuration this masker was built from."""
+        return self._config
+
+    def __repr__(self) -> str:
+        return f"SecretMask({self._config!r})"
 
     def mask_text(self, text: str) -> str:
-        """Redact every known secret pattern found inside a single string."""
-        result = text
-        for name, regex in self._config._patterns:
-            result = regex.sub(self._replacer(name), result)
-        if self._config.mask_credit_cards:
-            result = self._mask_cards(result)
-        return result
+        """Redact every detected secret inside one string.
+
+        >>> SecretMask().mask_text("Authorization: Bearer abc123def456ghi")
+        'Authorization: Bearer ***'
+        """
+        if not isinstance(text, str):
+            raise TypeError(f"mask_text expects a str, got {type(text).__name__}")
+        config = self._config
+        # A replacement can join what was around it into a new match (a quoted value
+        # whose line break went with a key block), so the scan repeats until it finds
+        # nothing new. Real text settles after one pass; noise built from detector
+        # fragments takes up to three.
+        for _ in range(_MAX_PASSES):
+            masked = mask_string(
+                text,
+                config._patterns,
+                cards=config.mask_credit_cards,
+                allow=config._allow,
+                placeholder=config.placeholder,
+                render=self._render,
+            )
+            if masked == text:
+                break
+            text = masked
+        return text
 
     def mask(self, value: Any) -> Any:
-        """Redact a value recursively.
+        """Redact a value recursively and return the masked copy.
 
-        Strings are pattern-redacted. In a mapping, the value of any sensitive key
-        is replaced according to the strategy; other values are masked in turn.
-        Lists and tuples are walked element by element. Anything else is returned
-        unchanged.
+        Strings are scanned with :meth:`mask_text`. In a mapping, the value of a
+        sensitive key is replaced as a whole (a nested value included) and other
+        values are masked in turn; mappings come back as ``dict``, lists as
+        ``list`` and tuples as plain ``tuple``. Any other value is returned as it
+        is. A structure that contains itself raises :class:`ValueError`.
+
+        >>> SecretMask().mask({"password": "hunter2", "note": ["mail ada@example.com", 7]})
+        {'password': '***', 'note': ['mail ***', 7]}
         """
-        if isinstance(value, Mapping):
-            return {
-                key: (
-                    self._mask_key_value(str(key), item)
-                    if self._is_sensitive_key(key)
-                    else self.mask(item)
-                )
-                for key, item in value.items()
-            }
-        if isinstance(value, str):
-            return self.mask_text(value)
-        if isinstance(value, (list, tuple)):
-            masked = [self.mask(item) for item in value]
-            return tuple(masked) if isinstance(value, tuple) else masked
-        return value
+        return walk(value, leaf=self.mask_text, sensitive=self._config._keys, hide=self._hide)
 
     def mask_json(self, text: str) -> str:
-        """Parse a JSON document, mask it by structure, and re-serialise it.
+        """Parse a JSON document, mask it by structure, and serialise it again.
 
+        The output is compact JSON on one line with non-ASCII text kept as is.
         Raises :class:`ValueError` if ``text`` is not valid JSON.
+
+        >>> SecretMask().mask_json('{"api_key": "k-123", "user": "ada"}')
+        '{"api_key": "***", "user": "ada"}'
         """
-        return json.dumps(self.mask(json.loads(text)), ensure_ascii=False)
+        if not isinstance(text, str):
+            raise TypeError(f"mask_json expects a str, got {type(text).__name__}")
+        try:
+            data = json.loads(text)
+        except RecursionError:
+            raise ValueError("JSON document is nested too deeply") from None
+        return json.dumps(self.mask(data), ensure_ascii=False)
 
-    def _is_sensitive_key(self, key: object) -> bool:
-        if not isinstance(key, str):
-            return False
-        normalized = _normalize_key(key)
-        return any(name in normalized for name in self._config._keys)
-
-    def _mask_key_value(self, key: str, value: Any) -> Any:
+    def _hide(self, key: str, value: Any) -> Any:
         if isinstance(value, str) and value in self._config._allow:
             return value
         strategy = self._config._strategy
         if strategy in (Strategy.PARTIAL, Strategy.HASH) and isinstance(value, str):
-            return self._render(strategy, value, key)
+            return self._render(value, key)
         if strategy is Strategy.LABEL:
             return f"<redacted:{key}>"
         return self._config.placeholder
 
-    def _render(self, strategy: Strategy, secret: str, name: str) -> str:
+    def _render(self, secret: str, name: str) -> str:
+        config = self._config
         return render(
-            strategy,
+            config._strategy,
             secret,
             name,
-            placeholder=self._config.placeholder,
-            keep_last=self._config.keep_last,
-            hash_length=self._config.hash_length,
+            placeholder=config.placeholder,
+            keep_last=config.keep_last,
+            hash_length=config.hash_length,
+            hash_key=config._hash_key,
         )
-
-    def _replacer(self, name: str) -> Callable[[re.Match[str]], str]:
-        strategy = self._config._strategy
-        allow = self._config._allow
-
-        def repl(match: re.Match[str]) -> str:
-            if "s" in match.re.groupindex:
-                whole = match.group(0)
-                secret = match.group("s")
-                if secret in allow:
-                    return whole
-                start = match.start("s") - match.start()
-                end = match.end("s") - match.start()
-                return whole[:start] + self._render(strategy, secret, name) + whole[end:]
-            secret = match.group(0)
-            if secret in allow:
-                return secret
-            return self._render(strategy, secret, name)
-
-        return repl
-
-    def _mask_cards(self, text: str) -> str:
-        strategy = self._config._strategy
-        allow = self._config._allow
-
-        def repl(match: re.Match[str]) -> str:
-            whole = match.group(0)
-            digits = re.sub(r"[^0-9]", "", whole)
-            if 13 <= len(digits) <= 19 and luhn_ok(digits) and whole not in allow:
-                return self._render(strategy, whole, "credit_card")
-            return whole
-
-        return _CARD_RE.sub(repl, text)
 
 
 _default = SecretMask()
 
 
+def _masker(config: MaskConfig | None) -> SecretMask:
+    return _default if config is None else SecretMask(config)
+
+
 def mask(value: Any, *, config: MaskConfig | None = None) -> Any:
-    """Redact a value recursively using the default or a given configuration."""
-    masker = SecretMask(config) if config is not None else _default
-    return masker.mask(value)
+    """Redact a value recursively; see :meth:`SecretMask.mask`.
+
+    >>> from secretmask import mask
+    >>> mask({"user": "ada", "db_password": "hunter2", "tags": ("a@b.io", 1)})
+    {'user': 'ada', 'db_password': '***', 'tags': ('***', 1)}
+    """
+    return _masker(config).mask(value)
 
 
 def mask_text(text: str, *, config: MaskConfig | None = None) -> str:
-    """Redact every known secret pattern inside a single string."""
-    masker = SecretMask(config) if config is not None else _default
-    return masker.mask_text(text)
+    """Redact every detected secret inside one string; see :meth:`SecretMask.mask_text`.
+
+    >>> from secretmask import mask_text
+    >>> mask_text("card 4242 4242 4242 4242 exp 12/34, mail ada@example.com")
+    'card *** exp 12/34, mail ***'
+    """
+    return _masker(config).mask_text(text)
 
 
 def mask_json(text: str, *, config: MaskConfig | None = None) -> str:
-    """Mask a JSON document by structure and return masked JSON.
+    """Mask a JSON document by structure; see :meth:`SecretMask.mask_json`.
 
-    Raises :class:`ValueError` if ``text`` is not valid JSON.
+    >>> from secretmask import mask_json
+    >>> mask_json('{"password": "p", "note": "ping a@b.io"}')
+    '{"password": "***", "note": "ping ***"}'
     """
-    masker = SecretMask(config) if config is not None else _default
-    return masker.mask_json(text)
-
-
-__all__ = ["SecretMask", "mask", "mask_json", "mask_text"]
+    return _masker(config).mask_json(text)

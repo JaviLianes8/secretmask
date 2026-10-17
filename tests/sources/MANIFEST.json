@@ -1,0 +1,149 @@
+{
+ "aws-iam-identifiers.html": {
+  "fetched": "2026-10-17",
+  "licence": "CC-BY-SA-4.0",
+  "sha256": "46f725dedd88512d373d5e498c694bbba542077963e159e271344a6ebbde4b79",
+  "size": 47941,
+  "url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html"
+ },
+ "github-authentication.md": {
+  "fetched": "2026-10-17",
+  "licence": "CC-BY-4.0",
+  "sha256": "82d2577e5abf29594bacce13d496742ab23b974460c078f690b359c2eb11dcbf",
+  "size": 16323,
+  "url": "https://docs.github.com/api/article/body?pathname=/en/authentication/keeping-your-account-and-data-secure/about-authentication-to-github"
+ },
+ "gitleaks.toml": {
+  "fetched": "2026-10-17",
+  "licence": "MIT",
+  "sha256": "e163e53b9e7e8a8511e77271e2b323ed057759542a6d988258afe3a1fa329caf",
+  "size": 97731,
+  "url": "https://raw.githubusercontent.com/gitleaks/gitleaks/b58d3f102cf3a2c84cb7f923d05c25c9b1aed84b/config/gitleaks.toml"
+ },
+ "google-api-keys.html": {
+  "fetched": "2026-10-17",
+  "licence": "CC-BY-4.0",
+  "sha256": "5473d016fcc4566069eb1ad1faf7e48a415fbf957c7ec96b88782606a3a2bc1b",
+  "size": 571702,
+  "url": "https://cloud.google.com/docs/authentication/api-keys"
+ },
+ "rfc3986.txt": {
+  "fetched": "2026-10-17",
+  "licence": "IETF Trust",
+  "sha256": "3102dae4b68cebe40337730312fcb612297b8928547267e8b3d1ee6002b2d683",
+  "size": 141811,
+  "url": "https://www.rfc-editor.org/rfc/rfc3986.txt"
+ },
+ "rfc4880.txt": {
+  "fetched": "2026-10-17",
+  "licence": "IETF Trust",
+  "sha256": "575dc55f0edea3cb490ad92941e83bd755f674c20619efee0a5a5b721b32bf02",
+  "size": 203706,
+  "url": "https://www.rfc-editor.org/rfc/rfc4880.txt"
+ },
+ "rfc6750.txt": {
+  "fetched": "2026-10-17",
+  "licence": "IETF Trust",
+  "sha256": "9dc385cf4ecdd85024e5a95e447ede9230e11700bf35251906b25b37557d604b",
+  "size": 38949,
+  "url": "https://www.rfc-editor.org/rfc/rfc6750.txt"
+ },
+ "rfc7468.txt": {
+  "fetched": "2026-10-17",
+  "licence": "IETF Trust",
+  "sha256": "0b2c3c2087cc0b099789c90e61c0208e87b25793f0ce40090979e8c734b3d989",
+  "size": 41594,
+  "url": "https://www.rfc-editor.org/rfc/rfc7468.txt"
+ },
+ "rfc7519.txt": {
+  "fetched": "2026-10-17",
+  "licence": "IETF Trust",
+  "sha256": "fecd930e9ccf2276b95c0017c6c4ff5d09352e4bc3c7629946447894e0f97248",
+  "size": 63039,
+  "url": "https://www.rfc-editor.org/rfc/rfc7519.txt"
+ },
+ "rfc7617.txt": {
+  "fetched": "2026-10-17",
+  "licence": "IETF Trust",
+  "sha256": "bc941321da9912fbb1bc92ad1820848ddfd3283dbfbc30f26ea2800bdaf541db",
+  "size": 30163,
+  "url": "https://www.rfc-editor.org/rfc/rfc7617.txt"
+ },
+ "slack-tokens.html": {
+  "fetched": "2026-10-17",
+  "licence": "Slack documentation",
+  "sha256": "c710a78237243c81647619faf291540ef8f46d8ea42a15ead580530d76a09bd5",
+  "size": 56705,
+  "url": "https://docs.slack.dev/authentication/tokens"
+ },
+ "stripe-keys.md": {
+  "fetched": "2026-10-17",
+  "licence": "Stripe documentation",
+  "sha256": "eeb6fbc8b38071e6030a9116a8e821947da582802e9c35b19d05991972c9ae93",
+  "size": 25291,
+  "url": "https://docs.stripe.com/keys.md"
+ },
+ "stripe-testing.md": {
+  "fetched": "2026-10-17",
+  "licence": "Stripe documentation",
+  "sha256": "a2c1f596f9dc81aa9e1d5a135cd8a82bf098264d9d4dd8e0979cc664d4c9c3ca",
+  "size": 135035,
+  "url": "https://docs.stripe.com/testing.md"
+ },
+ "stripe-webhook-signature.md": {
+  "fetched": "2026-10-17",
+  "licence": "Stripe documentation",
+  "sha256": "eb2460d8bbc6875b5f0d103a1f83b6110496d7ee2e057a202e668710912b7e48",
+  "size": 27632,
+  "url": "https://docs.stripe.com/webhooks/signature.md"
+ },
+ "trufflehog-aws.go": {
+  "fetched": "2026-10-17",
+  "licence": "AGPL-3.0",
+  "sha256": "14731efb1f456e86f6d2cd96cc7a5f29778eb91e106c10be03e66ffdd94d198f",
+  "size": 10985,
+  "url": "https://raw.githubusercontent.com/trufflesecurity/trufflehog/31d730383da3a2a71735410240ab9416f8f0eb54/pkg/detectors/aws/access_keys/accesskey.go"
+ },
+ "trufflehog-github.go": {
+  "fetched": "2026-10-17",
+  "licence": "AGPL-3.0",
+  "sha256": "f7ea205b9a5bfb639701d0c2853aff9178a20536c110acec4f076b1b0b894469",
+  "size": 4091,
+  "url": "https://raw.githubusercontent.com/trufflesecurity/trufflehog/31d730383da3a2a71735410240ab9416f8f0eb54/pkg/detectors/github/v2/github.go"
+ },
+ "trufflehog-openai.go": {
+  "fetched": "2026-10-17",
+  "licence": "AGPL-3.0",
+  "sha256": "11fb2a9ee62c08d842e8d7dcf5c8968a258706c2b866379a5f691ecc901aff3a",
+  "size": 5565,
+  "url": "https://raw.githubusercontent.com/trufflesecurity/trufflehog/31d730383da3a2a71735410240ab9416f8f0eb54/pkg/detectors/openai/openai.go"
+ },
+ "trufflehog-privatekey.go": {
+  "fetched": "2026-10-17",
+  "licence": "AGPL-3.0",
+  "sha256": "7b43188e8dc1ed53524f7ec64dc8e1240cbacd28b41f2a9df48a2eedadcfa8df",
+  "size": 8451,
+  "url": "https://raw.githubusercontent.com/trufflesecurity/trufflehog/31d730383da3a2a71735410240ab9416f8f0eb54/pkg/detectors/privatekey/privatekey.go"
+ },
+ "trufflehog-slack.go": {
+  "fetched": "2026-10-17",
+  "licence": "AGPL-3.0",
+  "sha256": "218ea9ec1bda91da144d21dbf5c3a1b7181b3181ba12fcd6803f61ff4924a86b",
+  "size": 4675,
+  "url": "https://raw.githubusercontent.com/trufflesecurity/trufflehog/31d730383da3a2a71735410240ab9416f8f0eb54/pkg/detectors/slack/slack.go"
+ },
+ "trufflehog-slackwebhook.go": {
+  "fetched": "2026-10-17",
+  "licence": "AGPL-3.0",
+  "sha256": "9d634a01a65da243898616f00fbfd45261dbb5572e42d34c651522d5572279a5",
+  "size": 4698,
+  "url": "https://raw.githubusercontent.com/trufflesecurity/trufflehog/31d730383da3a2a71735410240ab9416f8f0eb54/pkg/detectors/slackwebhook/slackwebhook.go"
+ },
+ "trufflehog-stripe.go": {
+  "fetched": "2026-10-17",
+  "licence": "AGPL-3.0",
+  "sha256": "00f4e71c5597fd18945facd863f4e2cee114e4024d95d7f8b1dc63d9ecca37e3",
+  "size": 2279,
+  "url": "https://raw.githubusercontent.com/trufflesecurity/trufflehog/31d730383da3a2a71735410240ab9416f8f0eb54/pkg/detectors/stripe/stripe.go"
+ }
+}
