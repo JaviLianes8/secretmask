@@ -8,9 +8,9 @@ Progress:
 - [x] Errors, typing, docstrings and doctests (items 2 to 5)
 - [x] Contract, fuzz and author mutation round (items 6, 9, 18)
 - [x] Docs: README, GUIDE, CHANGELOG (items 11, 12)
-- [ ] Packaging, e2e and upgrade from PyPI 0.2.0 (items 8, 13, 14)
-- [ ] Every interpreter on this PC (item 10)
-- [ ] Five QA lenses report PASS (item 19)
+- [x] Packaging, e2e and upgrade from PyPI 0.2.0 (items 8, 13, 14)
+- [x] Every interpreter on this PC (item 10)
+- [x] Five QA lenses report PASS (item 19)
 - [ ] Independent reviewer (item 16)
 - [ ] Gates (item 15)
 - [ ] PR open and trace guard CLEAN (item 17); merge and publish left to the maintainer
@@ -43,6 +43,45 @@ a contract):
 - A PEM body of many `BEGIN` lines without `END` took quadratic time (2.5 s for 80 kB).
 - CLI: an extra newline was appended to file and standard-input text, non-UTF-8 bytes
   failed the whole run, a closed pipe gave a traceback.
+
+## API review (items 1 to 5)
+
+Kept from 0.2.0: the six public names (`mask`, `mask_text`, `mask_json`, `SecretMask`,
+`MaskConfig`, `Strategy`), every signature, every `MaskConfig` field and default, the
+`Strategy` values, the detector names used by the label strategy, and the
+`secretmask` command with its options. Added: `MaskConfig.hash_key` (last field,
+keyword-friendly), `SecretMask.config`, `SecretMask.__repr__`, `--file -`. Changed:
+typed argument checks with documented `TypeError`/`ValueError` (GUIDE "Errors"),
+bounded messages, public names reporting `secretmask` as their module, `mask` without
+recursion (cycles raise `ValueError`). `__all__` lists the six names and nothing else
+public shows in `dir(secretmask)`; `tests/test_contract.py` freezes the signatures and
+the config fields. Every public name and the three masker methods carry examples that
+`tests/test_docs.py` runs, along with every README and GUIDE example (output compared
+line by line). `mypy --strict src tests scripts` is clean; `mask` returns `Any` because
+it returns the shape it is given (documented in GUIDE).
+
+## Behaviour changes against PyPI 0.2.0
+
+The CHANGELOG "Changed (upgrading from 0.2.0)" list is the reference; lens a checked it
+line by line against the real 0.2.0 from PyPI (58 side-by-side probes) and lens d ran
+0.2.0-style code before and after an in-place upgrade with identical output. In short:
+more secrets found (vendor formats as documented, `AWS_SECRET_ACCESS_KEY=`,
+`client_secret=`, JSON-like text, quoted values with spaces and escapes, Basic
+credentials, OpenPGP keys, truncated key blocks, unsecured JWTs, cards followed by a
+date); fewer false hits (tokens inside words, AWS unique ids that are not credentials,
+`author`/`tokenizer` keys, digit lists); stable output when masked again; typed config
+errors (`ValueError` instead of `re.error` for a bad regex); no recursion limit; CLI
+writes input back byte for byte, exits 2 on usage errors, masks its own messages.
+
+## Supported Pythons (item 10)
+
+`requires-python = ">=3.10"`. The suite from the extracted sdist, with `src` removed so
+it imports the installed wheel, on every interpreter of this PC from 3.10 up, at
+e7ad5f6: CPython 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2 and 3.14.2 free-threaded,
+1015 passed and 50 skipped on each (the fetched-source tests, which the sdist does not
+carry, the live detect-secrets test and the opt-in wheel end-to-end tests). 3.8 and 3.9
+are installed but below `requires-python`. Lens d ran the same at 99eccef (1003 passed
+each), and CPython 3.14.6 on the laptop.
 
 ## Ground truth (item 7)
 
