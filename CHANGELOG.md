@@ -39,7 +39,10 @@ forms documented in the guide, follow semantic versioning from here on.
   in groups of three or more (`4 1 1 1 ...` stays), and a bare value ends at `&`, so
   the rest of a query string survives.
 - A card followed by more digits, such as an expiry date or a year, is now found
-  (0.2.0 counted the extra digits and missed the card).
+  (0.2.0 counted the extra digits and missed the card). Grouped digits must follow a
+  card layout, so a quantity or year written before a card is kept.
+- URLs keep their host: 0.2.0 also read `pw@db.example.com` in
+  `postgres://app:pw@db.example.com` as an email address.
 - A private key block whose `END` line is missing is hidden instead of skipped.
 - Sensitive keys must end a word: `author`, `authenticated`, `tokenizer` and
   `passwordless` are no longer hidden; `max_tokens` (a plural of `token`) now is.

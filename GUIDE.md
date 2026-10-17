@@ -60,7 +60,9 @@ gitleaks, trufflehog and detect-secrets report in a synthetic corpus is hidden.
 Notes on the edges:
 
 - A token does not start inside a longer word: `risk-assessment-...` is not an `sk-`
-  key and `disk_test_...` is not a Stripe key. Stripe publishable keys (`pk_`) are
+  key and `disk_test_...` is not a Stripe key, while `x-ghp_...` and `tok_sk-...` are
+  found. A Google key must end there (`AIza` + 35 characters + `_prod` is a longer
+  name, as gitleaks reads it too). Stripe publishable keys (`pk_`) are
   public by design and stay. Of the twelve AWS unique id prefixes only the four
   credential ones are hidden; `AIDA...` (a user id) and `AROA...` (a role id) stay.
 - A private key block whose `END` line was cut off is hidden up to the next `-----`
@@ -70,12 +72,20 @@ Notes on the edges:
   `auth`, `private`, `secret`, `session`, `signing`, `encryption` or `master` key, an
   `access`, `auth` or `refresh` token, plurals included), so `AWS_SECRET_ACCESS_KEY=`,
   `dbPassword:` and `$config['api_key'] =` are found while `tokenizer=` and
-  `passwordless=` are not. A quoted value may contain spaces; a bare value ends at
-  whitespace or one of `` , ; & ' " ` ) ] } ``, so the next parameter of a query
-  string survives.
-- A card is whole groups of digits joined by single spaces or hyphens (every group
-  but the last at least three digits long), so `4242 4242 4242 4242 12/26` keeps the
-  date. Only ASCII digits count.
+  `passwordless=` are not. A quoted value runs to its closing quote and may hold
+  spaces, the other quote and backslash escapes; a bare value ends at whitespace or
+  one of `` , ; & ' " ` ) ] } ``, so the next parameter of a query string survives.
+- A connection-string value may also be doubled-quote escaped (`"pa""ss"`), braced
+  (`{pa}}ss}`) or contain spaces when a `;` ends it (`Password=my secret 99;`).
+- An email address never starts inside a URL's authority, so
+  `postgres://app:pw@db.example.com` keeps its host and `https://ada@example.org`
+  stays; after `mailto:` it is found.
+- A card is an unbroken run of 13 to 19 digits, or digit groups joined by single
+  spaces or hyphens in a card layout: a first group of four, middle groups of four
+  or six, a last group of at most six (4-4-4-4, 4-6-5, 4-6-4, 4-4-4-2). So
+  `4242 4242 4242 4242 12/26` keeps the date and `qty 197 4242 ...` the quantity.
+  When a run can be read as two overlapping cards (a four-digit number right before
+  one), both readings are hidden. Only ASCII digits count.
 
 ## Strategies
 
