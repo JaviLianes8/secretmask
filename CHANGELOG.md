@@ -69,6 +69,10 @@ forms documented in the guide, follow semantic versioning from here on.
   traceback, a closed pipe exits 0, Ctrl+C exits 130, and giving both text and
   `--file` is an error.
 - The public classes and functions report `secretmask` as their module.
+- `mask` reuses the masked copy of an object that appears more than once, so data
+  that shares objects is masked in time proportional to its size.
+- Command line: error messages are masked and never repeat a mistyped value; JSON
+  output escapes lone surrogates.
 
 ## [0.2.0] - 2026-10-11
 

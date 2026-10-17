@@ -147,7 +147,9 @@ print(mask({"payee_IBAN": "ES00", "auth": {"user": "ada"}, 1: "a@b.io"}, config=
 
 Mappings come back as `dict`, lists as `list`, tuples (named tuples too) as plain
 `tuple`; sets, bytes and other objects are returned as they are. Depth is limited only
-by memory. A structure that contains itself raises `ValueError`.
+by memory. An object that appears several times is masked once and its copy reused,
+so the output shares objects where the input does. A structure that contains itself
+raises `ValueError`.
 
 ## Allowlist, custom detectors, switches
 
@@ -188,7 +190,9 @@ The library's own messages never repeat a long value: a value longer than 24
 characters is described by its length only, so a secret pasted into the wrong field
 does not end up in a log. Invalid JSON raises `json.JSONDecodeError` (a `ValueError`),
 whose message gives only the position but whose `doc` attribute holds the document.
-On the command line, argparse quotes an invalid `--strategy` choice or number as given.
+On the command line, every message on standard error is masked too, an invalid choice
+or number is reported as "the given value", and unrecognized arguments are only
+counted, so a secret typed as an option (`secretmask -Xs3cr3t`) is not repeated.
 
 ## Command line
 
@@ -211,14 +215,16 @@ NAME=REGEX`, `--key NAME`, `--allow VALUE` (the last three repeatable), `--json`
 - Text from a file or standard input is written back byte for byte except for the
   secrets: line endings stay, nothing is added, and bytes that are not valid UTF-8
   pass through unchanged. A positional argument gets a newline; `--json` output is the
-  JSON on one line and a newline.
+  JSON on one line and a newline, with any lone surrogate written as a `\u` escape so
+  it stays valid UTF-8.
 - Exit status: 0 on success (also when the reader closes the pipe early), 1 for an
   error (message on standard error, starting with `secretmask:`; a bad value such as
   `--keep-last -1`, an invalid regex, a missing file, invalid JSON), 2 for bad usage
   (an unknown option or choice, a `--pattern` without `NAME=`, text and `--file`
   together), 130 on Ctrl+C.
 - The whole input is read before it is masked, so a key block split across lines is
-  still found.
+  still found. Realistic logs mask at about 1 MB per second; text packed with near
+  matches (thousands of `pwd={` in a row) is slower, still linear.
 
 ## What it does not do
 
