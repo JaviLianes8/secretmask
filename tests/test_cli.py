@@ -202,3 +202,9 @@ def test_lone_surrogates_in_text_and_json_output(
     assert raw.stdout == b"a\x80 b"
     escaped = _run("--json", stdin=b'{"a": "\\udc80"}')
     assert escaped.stdout == b'{"a": "\\udc80"}\n'
+
+
+def test_a_missing_option_value_is_named_as_such() -> None:
+    result = _run("--keep-last")
+    assert result.returncode == 2
+    assert b"argument --keep-last: expected one argument" in result.stderr
