@@ -138,3 +138,13 @@ def test_two_overlapping_readings_become_one_span() -> None:
             break
     spaced = " ".join(digits[i : i + 4] for i in range(0, 20, 4))
     assert list(find_cards(f"x {spaced} y")) == [(2, 2 + len(spaced))]
+
+
+def test_twenty_cards_in_one_run_are_all_hidden_in_one_pass() -> None:
+    from secretmask._scan import mask_string
+
+    run = " ".join(["4242424242424242"] * 20)
+    out = mask_string(
+        run, (), cards=True, allow=frozenset(), placeholder="***", render=lambda s, n: "#"
+    )
+    assert "4242" not in out

@@ -74,7 +74,7 @@ Notes on the edges:
   `access`, `auth` or `refresh` token, plurals included), so `AWS_SECRET_ACCESS_KEY=`,
   `dbPassword:` and `$config['api_key'] =` are found while `tokenizer=` and
   `passwordless=` are not. A quoted value runs to its closing quote and may hold
-  spaces, the other quote and backslash escapes; a bare value ends at whitespace or
+  spaces, the other quote, backslash escapes and doubled quotes (`'it''s'`); a bare value ends at whitespace or
   one of `` , ; & ' " ` ) ] } ``, so the next parameter of a query string survives.
 - A connection-string value may also be doubled-quote escaped (`"pa""ss"`), braced
   (`{pa}}ss}`) or contain spaces when a `;` ends it (`Password=my secret 99;`); as
