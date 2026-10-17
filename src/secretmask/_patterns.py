@@ -14,6 +14,7 @@ from __future__ import annotations
 # outside a base64url run, which keeps a run of "-eyJ-eyJ..." linear.
 _START = r"(?<![A-Za-z0-9])"
 _RUN_START = r"(?<![A-Za-z0-9_-])"
+EMAIL = "email"
 _B64URL = r"[A-Za-z0-9_-]"
 
 # Detectors run in this order and, where two matches overlap, the earlier one wins,
@@ -54,7 +55,7 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
     # Slack bot, user, workspace, refresh, configuration, app-level and workflow tokens.
     (
         "slack_token",
-        r"(?<![A-Za-z0-9.-])(?:xoxe\.)?(?:xox[abeoprs]|xapp|xwfp)-[A-Za-z0-9-]{8,}",
+        r"(?<![A-Za-z0-9.])(?:xoxe\.)?(?:xox[abeoprs]|xapp|xwfp)-[A-Za-z0-9-]{8,}",
     ),
     (
         "slack_webhook",
@@ -95,15 +96,11 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
         r"(?:(?:[_.-]|(?-i:[A-Z]))[A-Za-z0-9_.-]{0,32})?"
         r"[\"']?\]?[ \t]{0,8}(?:=>|:=|[:=])[ \t]{0,8}[\"']?"
         r"(?P<s>(?<=\")(?:[^\"\\\n]|\\.){1,4096}(?=\")|(?<=')(?:[^'\\\n]|\\.){1,4096}(?=')"
-        r"|[^\s,;&'\"`)\]}]+)",
+        r"|[^\s,;&'\"`)\]}]+(?:['\"][^\s,;&'\"`)\]}]+)*)",
     ),
-    # An address starts a token and never inside a URL's authority ("://user:pw@host"
-    # and "://user@host" keep their host), except right after "mailto:".
-    (
-        "email",
-        r"(?:(?<=mailto:)|(?<![:/@A-Za-z0-9._%+-]))"
-        r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}",
-    ),
+    # An address starts a token; one inside a URL's authority ("://user:p+w@host",
+    # "://user@host") is not an address, see _scan.py.
+    (EMAIL, r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}"),
 )
 
 # Default key names whose values are secrets wherever they appear in a mapping. Key

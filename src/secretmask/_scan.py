@@ -6,6 +6,7 @@ import re
 from collections.abc import Callable, Iterable
 
 from ._cards import find_cards
+from ._patterns import BUILTIN_PATTERNS, EMAIL
 from ._strategy import masked_end
 
 CARD_NAME = "credit_card"
@@ -68,6 +69,25 @@ def _join_adjacent(spans: list[_Span]) -> list[_Span]:
     return joined
 
 
+_EMAIL_REGEX = dict(BUILTIN_PATTERNS)[EMAIL]
+_TOKEN_END = re.compile(r'[\s"<>]')
+
+
+def _in_url_authority(text: str, position: int) -> bool:
+    """Return True if ``position`` lies in the authority of a URL ("://user:pw@host")."""
+    floor = max(0, position - 512)
+    start = floor
+    for start in range(position - 1, floor - 1, -1):
+        if _TOKEN_END.match(text, start):
+            start += 1
+            break
+    else:
+        start = floor
+    head = text[start:position]
+    scheme = head.rfind("://")
+    return scheme >= 0 and not any(c in head[scheme + 3 :] for c in "/?#")
+
+
 def _pattern_spans(
     text: str, name: str, regex: re.Pattern[str], allow: frozenset[str], placeholder: str
 ) -> Iterable[_Span]:
@@ -77,6 +97,8 @@ def _pattern_spans(
         if start < 0:
             start, end = match.span()
         if start == end:
+            continue
+        if regex.pattern == _EMAIL_REGEX and _in_url_authority(text, start):
             continue
         yield (
             start,

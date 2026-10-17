@@ -110,3 +110,19 @@ def test_grouped_numbers_must_follow_a_card_layout() -> None:
     assert mask_text("3622 7206 2716 67") == "***"  # 4-4-4-2
     assert mask_text("378 2822 4631 0005") == "378 2822 4631 0005"  # starts with three
     assert mask_text("4242 42424 2424242") == "4242 42424 2424242"  # a five in the middle
+
+
+@pytest.mark.parametrize(
+    "number",
+    ["88762 3286 0129 0404", "0750 0201 0170 1887525", "1598 19072 36081", "1375 85847 19544"],
+)
+def test_luhn_valid_numbers_in_other_layouts_are_kept(number: str) -> None:
+    assert luhn_ok(number.replace(" ", ""))
+    assert mask_text(number) == number
+
+
+def test_overlapping_readings_hide_every_digit_and_long_runs_hide_every_card() -> None:
+    assert mask_text("9179 1044 839473 2969 0") == "***"
+    run = "4242 4242 4242 4242 " * 40
+    out = mask_text(run + "end")
+    assert "4242" not in out and out.endswith("end")

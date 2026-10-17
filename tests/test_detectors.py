@@ -92,6 +92,15 @@ def test_lookalikes_are_left_alone(text: str) -> None:
         ("https://ada@example.org/x", "https://ada@example.org/x"),
         ("mailto:ada@example.org", "mailto:***"),
         ("Password=my Secret 99;Encrypt=True", "Password=***;Encrypt=True"),
+        ("Password=my Secret 99 ;x", "Password=*** ;x"),
+        ("Password=my" + chr(9) + "Secret;x", "Password=***;x"),
+        ("Password=a b=c;x", "Password=*** b=c;x"),
+        ("api_key = 'a" + chr(92) + "' tail Secret-99'", "api_key = '***'"),
+        ('api_key = "ab' + "'cd'ef", 'api_key = "***'),
+        ("https://u:a~b@host.example.com/", "https://u:***@host.example.com/"),
+        ("https://u:a+b@host.example.com/", "https://u:***@host.example.com/"),
+        ("ftp://ada:p!$&'()*+,;=709e@ftp.example.org/", "ftp://ada:***@ftp.example.org/"),
+        ("see (ada@example.org)", "see (***)"),
         ('Password="pa""rest";x', "Password=***;x"),
         ("PWD={pa}}rest};x", "PWD=***;x"),
         ("password=abc user=bob", "password=*** user=bob"),
@@ -115,10 +124,19 @@ def test_tokens_after_a_hyphen_or_underscore_are_found() -> None:
             assert mask_text(left + token) == left + "***", left + token
 
 
+def test_escaped_connection_values_are_one_secret() -> None:
+    config = MaskConfig(strategy="partial", keep_last=3)
+    for value in ('"pa""rest"', "'pa''rest'", "{pa}}rest}"):
+        expected = "*" * (len(value) - 3) + value[-3:]
+        assert mask_text(f"Password={value};x", config=config) == f"Password={expected};x"
+
+
 def test_more_documented_shapes() -> None:
     jwe = ".".join(["eyJhbGciOiJSU0EifQ", "a" * 20, "b" * 16, "c" * 30, "d" * 22])
     assert mask_text(f"[{jwe}]", config=LABEL) == "[<redacted:jwt>]"
     assert mask_text("whsec_" + "Ab+/=" * 6, config=LABEL) == "<redacted:stripe_key>"
+    assert mask_text("ghs_1_" + tokens(3)[4][1], config=LABEL) == "<redacted:github_token>"
+    assert mask_text("h-xoxb-123456789012-FAKE") == "h-***"
     for prefix in ("xoxe-1-", "xoxr-", "xoxe.xoxp-1-", "xoxa-2-"):
         assert mask_text(prefix + "FAKE" + "0" * 20, config=LABEL) == "<redacted:slack_token>"
     for kind in ("workflows", "triggers"):
