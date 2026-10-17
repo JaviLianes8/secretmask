@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Iterator, Mapping
 
 import pytest
 
@@ -74,3 +75,21 @@ def test_shared_objects_cost_their_size_not_their_unfolding() -> None:
         assert out[0] is out[1]
         out = out[0]
     assert out == [{"token": "***", "note": "***"}]
+
+
+class _Fresh(Mapping[int, object]):
+    """A mapping that builds a new value on every access, so ids get reused."""
+
+    def __getitem__(self, key: int) -> object:
+        return [f"row {key}", {"token": "t"}]
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(range(6))
+
+    def __len__(self) -> int:
+        return 6
+
+
+def test_values_built_on_access_are_never_confused() -> None:
+    out = mask(_Fresh())
+    assert out == {k: [f"row {k}", {"token": "***"}] for k in range(6)}

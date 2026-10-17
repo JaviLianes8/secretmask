@@ -118,3 +118,10 @@ def test_a_reused_masker_repeats_itself() -> None:
     assert masker.mask_text("a@b.io") == "X"
     assert masker.mask({"token": "t"}) == {"token": "X"}
     assert masker.mask_text("a@b.io") == "X"
+
+
+def test_an_invalid_regex_error_does_not_show_a_long_name() -> None:
+    name = "n" * 40
+    with pytest.raises(ValueError) as info:
+        MaskConfig(extra_patterns=((name, "("),))
+    assert name not in str(info.value)

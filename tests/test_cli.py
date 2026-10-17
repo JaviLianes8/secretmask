@@ -147,3 +147,41 @@ def test_json_with_an_escaped_lone_surrogate_is_written_back_escaped() -> None:
     result = _run("--json", stdin=b'{"a": "\\ud800", "token": "t"}')
     assert result.returncode == 0, result.stderr
     assert result.stdout == b'{"a": "\\ud800", "token": "***"}\n'
+
+
+def test_no_typed_value_reaches_standard_error() -> None:
+    secret = "hunter2pwLongEnoughToSee"
+    cases = [
+        ["-X" + secret],
+        ["--strategy", secret, "x"],
+        ["--keep-last", secret, "x"],
+        ["--ke=" + secret],
+        ["--json=" + secret],
+        ["--no-cards=" + secret],
+    ]
+    for args in cases:
+        result = _run(*args)
+        assert result.returncode == 2, args
+        assert secret.encode() not in result.stderr, args
+    many = _run("a", "b", "c")
+    assert b"2 unrecognized argument(s)" in many.stderr
+
+
+def test_long_quoted_values_in_errors_are_described_by_length() -> None:
+    short = _run("--file", "m" * 24)
+    long = _run("--file", "m" * 25)
+    assert b"m" * 24 in short.stderr
+    assert b"m" * 25 not in long.stderr and b"a value of 25 characters" in long.stderr
+
+
+def test_lone_surrogates_in_text_and_json_output(
+    capsysbinary: pytest.CaptureFixture[bytes],
+) -> None:
+    assert main(["x\udc41y"]) == 0
+    assert capsysbinary.readouterr().out == b"x\\udc41y\n"
+    assert main(["x\ud800y"]) == 0
+    assert capsysbinary.readouterr().out == b"x\\ud800y\n"
+    raw = _run(stdin=b"a\x80 b")
+    assert raw.stdout == b"a\x80 b"
+    escaped = _run("--json", stdin=b'{"a": "\\udc80"}')
+    assert escaped.stdout == b'{"a": "\\udc80"}\n'

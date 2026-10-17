@@ -13,7 +13,8 @@ from ._mask import mask_text
 OUTPUT_ERRORS = "secretmask.output"
 JSON_ERRORS = "secretmask.json"
 _LONG_QUOTED = re.compile(r"'([^'\n]{25,})'")
-_GIVEN = re.compile(r"(invalid [a-z ]+?: )'[^'\n]*'")
+_GIVEN = re.compile(r"(invalid [a-z ]+?: |ignored explicit argument )'[^'\n]*'")
+_AMBIGUOUS = re.compile(r"(ambiguous option: [^=\s]*)=\S*")
 _ESCAPE = b"\\u%04x"
 
 
@@ -32,6 +33,7 @@ class Parser(argparse.ArgumentParser):
             count = len(message.split(":", 1)[1].split())
             message = f"{count} unrecognized argument(s); put text after -- or use --file"
         message = _GIVEN.sub(r"\1the given value", message)
+        message = _AMBIGUOUS.sub(r"\1", message)
         self.print_usage(sys.stderr)
         self.exit(2, f"{self.prog}: error: {safe(message)}\n")
 
