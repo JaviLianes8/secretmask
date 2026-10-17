@@ -42,8 +42,6 @@ forms documented in the guide, follow semantic versioning from here on.
   (0.2.0 counted the extra digits and missed the card). Grouped digits must follow a
   card layout, so a quantity written before a card is kept and the card found
   (0.2.0 missed the card in `qty 197 4242 4242 4242 4242`).
-- A user name in a URL without a password is no longer read as an email address:
-  0.2.0 turned `https://ada@example.org/x` into `https://***/x`.
 - A private key block whose `END` line is missing is hidden instead of skipped.
 - Sensitive keys must end a word: `author`, `authenticated`, `tokenizer` and
   `passwordless` are no longer hidden; `max_tokens` (a plural of `token`) now is.

@@ -66,7 +66,7 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
     # ("redis://:pw@host") and up to three unescaped "@" in the password stay inside it.
     (
         "url_credentials",
-        r"://[^:/?#@\s]{0,255}:(?P<s>[^\s/?#@]{1,255}(?:@[^\s/?#@]{1,255}){0,3})@",
+        r"://[^:/?#@\s'\"<>]{0,255}:(?P<s>[^\s/?#@\"<>]{1,255}(?:@[^\s/?#@\"<>]{1,255}){0,3})@",
     ),
     # ADO.NET and ODBC connection strings: quoted, braced or bare values.
     (
@@ -96,7 +96,7 @@ BUILTIN_PATTERNS: tuple[tuple[str, str], ...] = (
         r"(?:(?:[_.-]|(?-i:[A-Z]))[A-Za-z0-9_.-]{0,32})?"
         r"[\"']?\]?[ \t]{0,8}(?:=>|:=|[:=])[ \t]{0,8}[\"']?"
         r"(?P<s>(?<=\")(?:[^\"\\\n]|\\.){1,4096}(?=\")|(?<=')(?:[^'\\\n]|\\.){1,4096}(?=')"
-        r"|[^\s,;&'\"`)\]}]+(?:['\"][^\s,;&'\"`)\]}]+)*)",
+        r"|[^\s,;&'\"`)\]}]+(?:['\"]+[^\s,;&'\"`)\]}]+)*)",
     ),
     # An address starts a token; one inside a URL's authority ("://user:p+w@host",
     # "://user@host") is not an address, see _scan.py.

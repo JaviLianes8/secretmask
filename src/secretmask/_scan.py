@@ -16,7 +16,18 @@ CARD_NAME = "credit_card"
 _Span = tuple[int, int, str, bool]
 
 
-def _merge(taken: list[_Span], found: Iterable[_Span]) -> list[_Span]:
+def _clashes(merged: list[_Span], taken: list[_Span], index: int, span: _Span) -> bool:
+    # True if ``span`` overlaps a span of a detector it yields to (see _EMAIL_YIELDS_TO).
+    if merged and merged[-1][1] > span[0] and merged[-1][2] in _EMAIL_YIELDS_TO:
+        return True
+    while index < len(taken) and taken[index][0] < span[1]:
+        if taken[index][2] in _EMAIL_YIELDS_TO:
+            return True
+        index += 1
+    return False
+
+
+def _merge(taken: list[_Span], found: Iterable[_Span], *, yields: bool = False) -> list[_Span]:
     """Add the spans of one later detector to ``taken``.
 
     A span that overlaps earlier ones is joined with them into one span, named after
@@ -30,6 +41,8 @@ def _merge(taken: list[_Span], found: Iterable[_Span]) -> list[_Span]:
         while index < len(taken) and taken[index][1] <= span[0]:
             merged.append(taken[index])
             index += 1
+        if yields and _clashes(merged, taken, index, span):
+            continue
         group: list[_Span] = []
         if merged and merged[-1][1] > span[0]:
             group.append(merged.pop())
@@ -70,22 +83,9 @@ def _join_adjacent(spans: list[_Span]) -> list[_Span]:
 
 
 _EMAIL_REGEX = dict(BUILTIN_PATTERNS)[EMAIL]
-_TOKEN_END = re.compile(r'[\s"<>]')
-
-
-def _in_url_authority(text: str, position: int) -> bool:
-    """Return True if ``position`` lies in the authority of a URL ("://user:pw@host")."""
-    floor = max(0, position - 512)
-    start = floor
-    for start in range(position - 1, floor - 1, -1):
-        if _TOKEN_END.match(text, start):
-            start += 1
-            break
-    else:
-        start = floor
-    head = text[start:position]
-    scheme = head.rfind("://")
-    return scheme >= 0 and not any(c in head[scheme + 3 :] for c in "/?#")
+# The part of "://user:p+w@db.example.com" after the password reads as an address;
+# where the password is already hidden, the address yields, so the host is kept.
+_EMAIL_YIELDS_TO = frozenset({"url_credentials"})
 
 
 def _pattern_spans(
@@ -97,8 +97,6 @@ def _pattern_spans(
         if start < 0:
             start, end = match.span()
         if start == end:
-            continue
-        if regex.pattern == _EMAIL_REGEX and _in_url_authority(text, start):
             continue
         yield (
             start,
@@ -120,12 +118,13 @@ def mask_string(
     """Return ``text`` with every detected secret replaced by ``render(secret, name)``."""
     taken: list[_Span] = []
     for name, regex in patterns:
-        taken = _merge(taken, _pattern_spans(text, name, regex, allow, placeholder))
+        found = _pattern_spans(text, name, regex, allow, placeholder)
+        taken = _merge(taken, found, yields=regex.pattern == _EMAIL_REGEX)
     if cards:
-        found = (
+        cards_found = (
             (start, end, CARD_NAME, text[start:end] in allow) for start, end in find_cards(text)
         )
-        taken = _merge(taken, found)
+        taken = _merge(taken, cards_found)
     if not taken:
         return text
     taken = _join_adjacent(taken)

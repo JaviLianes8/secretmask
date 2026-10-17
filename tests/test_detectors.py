@@ -89,7 +89,25 @@ def test_lookalikes_are_left_alone(text: str) -> None:
             "postgres://admin:***@db.example.com:5432/app",
         ),
         ("amqp://u:p@ss@mq.example.org/vh", "amqp://u:***@mq.example.org/vh"),
-        ("https://ada@example.org/x", "https://ada@example.org/x"),
+        ("https://ada@example.org/x", "https://***/x"),
+        ("https://acme.com,ada@example.org", "https://acme.com,***"),
+        ("https://acme.com;ada@example.org", "https://acme.com;***"),
+        ("https://acme.com|ada@example.org", "https://acme.com|***"),
+        ("(https://acme.com)ada@example.org", "(https://acme.com)***"),
+        ("'https://acme.com','ada@example.org'", "'https://acme.com','***'"),
+        ("https://acme.com&to=ada@example.org", "https://acme.com&to=***"),
+        ("https://acme.com ada@example.org", "https://acme.com ***"),
+        ('["https://acme.com","ada@example.org"]', '["https://acme.com","***"]'),
+        (
+            "{'url':'https://acme.com','to':'ada@example.org'}",
+            "{'url':'https://acme.com','to':'***'}",
+        ),
+        ("x https://h.com/a#b ada@b.io", "x https://h.com/a#b ***"),
+        ('Password="pa"";re st";x', "Password=***;x"),
+        ("Server=a;Password=a b c d;x", "Server=a;Password=***;x"),
+        ("token=a'b'c", "token=***"),
+        ('token=a"b', "token=***"),
+        ("token=a''b", "token=***"),
         ("mailto:ada@example.org", "mailto:***"),
         ("Password=my Secret 99;Encrypt=True", "Password=***;Encrypt=True"),
         ("Password=my Secret 99 ;x", "Password=*** ;x"),
@@ -137,6 +155,8 @@ def test_more_documented_shapes() -> None:
     assert mask_text("whsec_" + "Ab+/=" * 6, config=LABEL) == "<redacted:stripe_key>"
     assert mask_text("ghs_1_" + tokens(3)[4][1], config=LABEL) == "<redacted:github_token>"
     assert mask_text("h-xoxb-123456789012-FAKE") == "h-***"
+    for kept in ("a.xoxb-123456789012-FAKE", "7xoxb-123456789012-FAKE"):
+        assert mask_text(kept) == kept
     for prefix in ("xoxe-1-", "xoxr-", "xoxe.xoxp-1-", "xoxa-2-"):
         assert mask_text(prefix + "FAKE" + "0" * 20, config=LABEL) == "<redacted:slack_token>"
     for kind in ("workflows", "triggers"):

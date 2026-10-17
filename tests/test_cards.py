@@ -126,3 +126,15 @@ def test_overlapping_readings_hide_every_digit_and_long_runs_hide_every_card() -
     run = "4242 4242 4242 4242 " * 40
     out = mask_text(run + "end")
     assert "4242" not in out and out.endswith("end")
+
+
+def test_two_overlapping_readings_become_one_span() -> None:
+    from secretmask._cards import find_cards
+
+    rng = random.Random(21)
+    while True:
+        digits = "".join(rng.choice("0123456789") for _ in range(20))
+        if luhn_ok(digits[:16]) and luhn_ok(digits[4:]):
+            break
+    spaced = " ".join(digits[i : i + 4] for i in range(0, 20, 4))
+    assert list(find_cards(f"x {spaced} y")) == [(2, 2 + len(spaced))]

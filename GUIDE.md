@@ -79,9 +79,9 @@ Notes on the edges:
 - A connection-string value may also be doubled-quote escaped (`"pa""ss"`), braced
   (`{pa}}ss}`) or contain spaces when a `;` ends it (`Password=my secret 99;`); as
   the last pair, with no `;`, a bare value ends at the first space.
-- An email address is never read inside a URL's authority, so
-  `postgres://app:p+w@db.example.com` keeps its host and `https://ada@example.org`
-  stays; after `mailto:` it is found.
+- Where a URL's password is hidden, the host after it is not read as part of an
+  email address, so `postgres://app:p+w@db.example.com` keeps its host. A user name
+  without a password (`https://ada@example.org`) is read as an address and hidden.
 - A card is an unbroken run of 13 to 19 digits, or digit groups joined by single
   spaces or hyphens in a card layout: a first group of four, middle groups of four
   or six, a last group of at most six (4-4-4-4, 4-6-5, 4-6-4, 4-4-4-2). So
