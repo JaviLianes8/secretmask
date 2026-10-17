@@ -11,9 +11,9 @@ Progress:
 - [x] Packaging, e2e and upgrade from PyPI 0.2.0 (items 8, 13, 14)
 - [x] Every interpreter on this PC (item 10)
 - [x] Five QA lenses report PASS (item 19)
-- [ ] Independent reviewer (item 16)
-- [ ] Gates (item 15)
-- [ ] PR open and trace guard CLEAN (item 17); merge and publish left to the maintainer
+- [x] Independent reviewer (item 16)
+- [x] Gates (item 15)
+- [x] PR #3 open and trace guard CLEAN (item 17); merge and publish left to the maintainer
 
 ## Baseline on 0.2.0 (before any change)
 
@@ -205,3 +205,37 @@ and sweep at most 40 new mutations on the code changed since.
 | Round | Head | Verdict | Findings and outcome |
 | --- | --- | --- | --- |
 | 1 | 04c096f | FAIL (item 5) | 18 items passed from fresh clones (gates each alone, build and `twine check --strict`, archives, metadata, 27 README and CHANGELOG claims rerun from the wheel, doctests, opt-in e2e with the 0.2.0 upgrade, report hashes and test names, hygiene, trace guard CLEAN); 25 own mutants on `_scan.py`, `_patterns.py`, `_output.py`: 23 killed, 2 equivalent (touching spans that no detector can produce). Fail: a custom regex too large (`a{4294967296}`) or too nested raised `OverflowError`/`RecursionError` instead of `ValueError`, and the CLI showed a traceback. Minor: two test files over 200 lines. Fixed in 148babd |
+| 2 | 89dfbd5 | PASS | the regex fix confirmed (`ValueError`, one-line CLI message); every file under `src/` and `tests/` at most 200 lines; the four gates each alone on a fresh clone with the sources fetched (1063 passed, 4 skipped); 5 mutants on the change: 4 killed, the message wording pinned after it (exact message match in `tests/test_edges.py`); trace guard CLEAN |
+
+## Gates (item 15)
+
+From fresh clones at 89dfbd5, each command alone with the sources fetched first:
+`ruff format --check .`, `ruff check .`, `mypy --strict src tests scripts` exit 0;
+`pytest` 1063 passed, 4 skipped (three opt-in wheel tests and the live detect-secrets
+test). `SECRETMASK_E2E=1 pytest tests/test_e2e_wheel.py` 3 passed (wheel in a fresh
+venv, console script, in-place upgrade from PyPI 0.2.0). `python -m build` and
+`twine check --strict` pass for the wheel and the sdist.
+
+## Scorecard
+
+| # | Item | Verdict | Evidence |
+| --- | --- | --- | --- |
+| 1 | API reviewed for stability | PASS | every 0.2.0 name, signature and default kept; additions and changes in CHANGELOG 1.0.0, checked against PyPI 0.2.0 by lenses a and d |
+| 2 | `__all__` exact | PASS | six names, nothing else public (`tests/test_contract.py`) |
+| 3 | Docstrings with runnable examples | PASS | every public name and the three masker methods; doctests and every README and GUIDE example run in `tests/test_docs.py` |
+| 4 | Typed end to end | PASS | `mypy --strict src tests scripts` clean; `py.typed` shipped; strict outsider consumer clean (lens d) |
+| 5 | Typed, documented, safe errors | PASS | GUIDE "Errors"; long values described by length; CLI messages masked and rebuilt from option names (lens c, reviewer) |
+| 6 | Contract asserts the full promise | PASS | 1063 tests: frozen signatures, every detector, vendor and RFC ground truth, reference rules, fuzz, hostile input, CLI |
+| 7 | Real ground truth | PASS | vendor pages and RFCs fetched live with manifest; gitleaks and trufflehog rules at pinned commits; detect-secrets 1.5.0 run live (2,262 findings recorded); re-derived independently by lens b over six rounds |
+| 8 | Real e2e incl. PyPI upgrade | PASS | opt-in wheel tests; outsider venv; in-place upgrade from PyPI 0.2.0 with identical output (author, lens d, reviewer) |
+| 9 | Seeded fuzz, no crash, hang or blow-up | PASS | seeded fuzz in the suite; lens c: 14,000 planted-secret seeds, 291,000 noise runs, linear timing on every hostile shape, a 200 MB file |
+| 10 | Every interpreter on this PC | PASS | 3.10.19, 3.11.5, 3.12.12, 3.13.2, 3.14.2, 3.14.2t from the installed wheel, 1015 passed each |
+| 11 | README | PASS | `twine check --strict`; absolute links; problem, verified why, install, quick start, guide and changelog links |
+| 12 | CHANGELOG dated 1.0.0 | PASS | `## [1.0.0] - 2026-10-16` with the stable surface and every change since 0.2.0 |
+| 13 | pyproject | PASS | 1.0.0 from one source, Production/Stable, 3.10 to 3.14, MIT, Homepage/Source/Issues/Changelog, keywords, no dependencies |
+| 14 | sdist and wheel contents | PASS | wheel: package, `py.typed`, LICENSE; sdist: source, tests, hash-only oracle fixture, manifest, scripts, docs; no fetched copy or notes |
+| 15 | Gates exit 0 alone | PASS | fresh clones, each command alone (author and reviewer) |
+| 16 | Independent reviewer | PASS | round 1 FAIL at 04c096f, round 2 PASS at 89dfbd5 |
+| 17 | PR, trace guard | ready | PR #3 from `release/1.0.0`, trace guard CLEAN; merge and PyPI publish left to the maintainer |
+| 18 | Mutation rounds | PASS | author 42; lens a 35 + 12; lens b 40 + 40 + 46 + 16 + 10 + 2; lens c 40 + 46 + 29 + 16; blind lens e 80 + 15; reviewer 25 + 5; every survivor killed by a contract or argued equivalent |
+| 19 | Five QA lenses | PASS | a (round 3), b (round 7), c (round 4), d (round 1), e (round 2) |

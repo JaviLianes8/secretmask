@@ -1,5 +1,7 @@
 # secretmask
 
+[![Lianes8 Certified](https://lianes8studio.com/certified/lianes8-certified-badge.svg)](https://lianes8studio.com/certified)
+
 Typed, zero-dependency secret masker: redact API keys, tokens, passwords, emails and
 card numbers in strings, logs, JSON and nested data before they are stored.
 
