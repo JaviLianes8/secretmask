@@ -51,6 +51,9 @@ def _compile(pairs: Any) -> tuple[tuple[str, re.Pattern[str]], ...]:
             raise ValueError(
                 f"pattern {_preview(name)} is not a valid regex: {error.msg}"
             ) from None
+        except (OverflowError, RecursionError):
+            message = f"pattern {_preview(name)} is too large or nested to compile"
+            raise ValueError(message) from None
     return tuple(compiled)
 
 

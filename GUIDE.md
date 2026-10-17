@@ -184,7 +184,7 @@ state that changes its results, so threads can share it.
 | Error | When |
 | --- | --- |
 | `TypeError` | a config field of the wrong type (a `str` where a tuple of strings is expected, a `bool` for `keep_last`), `SecretMask` given something that is not a `MaskConfig`, `mask_text` or `mask_json` given something that is not a `str` |
-| `ValueError` | `keep_last` below 0, `hash_length` outside 1 to 64, an unknown strategy, a bad pattern name, an invalid regex, invalid JSON, JSON nested deeper than the parser allows, a structure that contains itself |
+| `ValueError` | `keep_last` below 0, `hash_length` outside 1 to 64, an unknown strategy, a bad pattern name, an invalid regex or one too large or nested to compile, invalid JSON, JSON nested deeper than the parser allows, a structure that contains itself |
 
 The library's own messages never repeat a long value: a value longer than 24
 characters is described by its length only, so a secret pasted into the wrong field

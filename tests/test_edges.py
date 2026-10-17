@@ -70,3 +70,9 @@ def test_builtins_run_before_extra_patterns() -> None:
 def test_bytes_where_strings_are_expected_name_the_whole_value() -> None:
     with pytest.raises(TypeError, match="allowlist must be a tuple of strings, got bytes"):
         MaskConfig(allowlist=b"ab")  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("regex", ["a{4294967296}", "(" * 500 + ")" * 500])
+def test_a_regex_too_large_to_compile_is_a_value_error(regex: str) -> None:
+    with pytest.raises(ValueError, match="too large or nested to compile"):
+        MaskConfig(extra_patterns=(("x", regex),))
