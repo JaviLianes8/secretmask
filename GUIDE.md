@@ -190,9 +190,9 @@ The library's own messages never repeat a long value: a value longer than 24
 characters is described by its length only, so a secret pasted into the wrong field
 does not end up in a log. Invalid JSON raises `json.JSONDecodeError` (a `ValueError`),
 whose message gives only the position but whose `doc` attribute holds the document.
-On the command line, every message on standard error is masked too, an invalid choice
-or number is reported as "the given value", and unrecognized arguments are only
-counted, so a secret typed as an option (`secretmask -Xs3cr3t`) is not repeated.
+On the command line, every message on standard error is masked too, argparse errors are
+rebuilt from the option names alone ("argument --strategy: invalid value"), and
+unrecognized arguments are only counted, so a secret typed as an option (`secretmask -Xs3cr3t`) is not repeated.
 
 ## Command line
 

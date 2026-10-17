@@ -158,13 +158,28 @@ def test_no_typed_value_reaches_standard_error() -> None:
         ["--ke=" + secret],
         ["--json=" + secret],
         ["--no-cards=" + secret],
+        ["--ke=a " + secret],
+        ["--ke=a" + chr(9) + secret],
+        ["--p=x " + secret],
+        ["--ke=" + secret + "=x"],
+        ["--json=it's" + secret],
+        ["--strategy", "it's" + secret, "x"],
+        ["--keep-last", "it's" + secret, "x"],
+        ["--hash-length=it's" + secret, "x"],
     ]
     for args in cases:
         result = _run(*args)
         assert result.returncode == 2, args
-        assert secret.encode() not in result.stderr, args
+        for piece in (secret, secret[1:], secret[:-1], "hunter2"):
+            assert piece.encode() not in result.stderr, (args, piece)
     many = _run("a", "b", "c")
     assert b"2 unrecognized argument(s)" in many.stderr
+
+
+def test_errors_of_ours_are_masked_too() -> None:
+    result = _run("--file", "pwd=hunter2x")
+    assert result.returncode == 1
+    assert b"hunter2x" not in result.stderr and b"pwd=***" in result.stderr
 
 
 def test_long_quoted_values_in_errors_are_described_by_length() -> None:

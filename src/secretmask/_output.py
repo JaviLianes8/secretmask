@@ -13,8 +13,7 @@ from ._mask import mask_text
 OUTPUT_ERRORS = "secretmask.output"
 JSON_ERRORS = "secretmask.json"
 _LONG_QUOTED = re.compile(r"'([^'\n]{25,})'")
-_GIVEN = re.compile(r"(invalid [a-z ]+?: |ignored explicit argument )'[^'\n]*'")
-_AMBIGUOUS = re.compile(r"(ambiguous option: [^=\s]*)=\S*")
+_PREFIX = re.compile(r"-[A-Za-z0-9-]*")
 _ESCAPE = b"\\u%04x"
 
 
@@ -28,12 +27,24 @@ class Parser(argparse.ArgumentParser):
     """An argument parser whose errors never repeat what was typed."""
 
     # A secret typed in the wrong place ends up here: argparse would quote it.
+    # The message is rebuilt from the parser's own option names, never from argparse's
+    # text, which may quote what was typed in any style.
     def error(self, message: str) -> NoReturn:
         if message.startswith("unrecognized arguments:"):
             count = len(message.split(":", 1)[1].split())
             message = f"{count} unrecognized argument(s); put text after -- or use --file"
-        message = _GIVEN.sub(r"\1the given value", message)
-        message = _AMBIGUOUS.sub(r"\1", message)
+        elif message.startswith("ambiguous option:"):
+            typed = _PREFIX.match(message[len("ambiguous option:") :].lstrip())
+            prefix = typed.group(0) if typed else ""
+            names = sorted(n for n in self._option_string_actions if n.startswith(prefix))
+            message = "ambiguous option; it could match " + ", ".join(names)
+        elif message.startswith("argument ") and ": " in message:
+            head, _, rest = message.partition(": ")
+            if "ignored explicit argument" in rest:
+                rest = "takes no value"
+            elif not rest.startswith("expected"):
+                rest = "invalid value"
+            message = f"{head}: {rest}"
         self.print_usage(sys.stderr)
         self.exit(2, f"{self.prog}: error: {safe(message)}\n")
 
