@@ -166,6 +166,8 @@ def test_no_typed_value_reaches_standard_error() -> None:
         ["--strategy", "it's" + secret, "x"],
         ["--keep-last", "it's" + secret, "x"],
         ["--hash-length=it's" + secret, "x"],
+        ["--strategy", "x: " + secret, "x"],
+        ["--keep-last", secret + ": b", "x"],
     ]
     for args in cases:
         result = _run(*args)
