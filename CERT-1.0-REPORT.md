@@ -134,3 +134,15 @@ landed in 1a88501 and were confirmed to kill them; two are equivalent.
 | A40 | `_cli.py` | undecodable bytes replaced | killed | `test_cli.py::test_a_file_is_masked_byte_for_byte` |
 | A41 | `_cli.py` | closed pipe on Windows is an error | killed | `test_cli.py::test_a_closed_reader_is_not_an_error` |
 | A42 | `_patterns.py` | `basic_auth` renamed | killed | `test_docs.py::test_the_guide_lists_every_builtin_detector` |
+
+## QA lenses (item 19)
+
+Five independent reviews, one at a time, each reading the certification rules, running
+the code and reporting only to the maintainer. Later rounds confirm the earlier findings
+and sweep at most 40 new mutations on the code changed since.
+
+| Lens | Round | Head | Verdict | Findings and outcome |
+| --- | --- | --- | --- | --- |
+| a. API and docs | 1 | 1a88501 | FAIL | `extra_patterns` as a list of lists refused (worked in 0.2.0); `password => x` garbled by the connection-string detector; GUIDE claimed every error message is bounded (CLI and `JSONDecodeError.doc` were not); `--key` only affects mappings, undocumented; GUIDE key-rule wording; CLI usage errors exited 1. Fixed in a94408b and eb4a3a3 |
+| a | 2 | eb4a3a3 | FAIL | all seven confirmed fixed; examples and doctests rerun; 35 mutants on the changed code: 20 killed, 3 equivalent, 12 needing contracts (pattern option parsing, malformed pairs, quoted password values). Contracts in d76e796 |
+| a | 3 | d76e796 | PASS | all 12 survivors killed by the full suite; new tests check hard-coded expectations |
